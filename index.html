@@ -694,6 +694,62 @@ html, body {
   line-height: 1;
 }
 .home-btn:active { transform: scale(0.92); background: rgba(255,255,255,0.08); }
+
+/* Cards burnt rows */
+.burnt-row {
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.burnt-row:last-child { border-bottom: none; }
+.burnt-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 5px;
+  font-size: 14px;
+}
+.burnt-name { color: var(--text); }
+.burnt-count {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 20px;
+  color: var(--fire2);
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+.burnt-pct {
+  font-family: 'Oswald', sans-serif;
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 1px;
+  margin-left: 6px;
+}
+.burnt-bar-wrap {
+  height: 4px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.burnt-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--fire1), var(--fire3));
+  border-radius: 2px;
+  transition: width 0.6s cubic-bezier(0.4,0,0.2,1);
+  min-width: 2px;
+}
+
+/* Setup steps */
+.setup-step { display: none; width: 100%; max-width: 440px; flex-direction: column; gap: 14px; }
+.setup-step.active { display: flex; }
+.step-nav { display: flex; gap: 8px; margin-top: 4px; }
+.step-dots { display: flex; gap: 6px; justify-content: center; margin-bottom: 4px; }
+.step-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: rgba(255,100,0,0.2);
+  transition: background 0.2s;
+}
+.step-dot.active { background: var(--fire2); }
+
 .hand-mode-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -745,32 +801,43 @@ html, body {
     <div class="logo-sub">Cooperative Blackjack</div>
   </div>
 
-  <div class="setup-panel">
-    <h3>🔥 Dealer</h3>
-    <div class="player-entry">
-      <label>Dealer</label>
-      <input type="text" id="dealerInput" placeholder="Dealer name" value="Dealer" />
+  <div class="step-dots" id="stepDots"></div>
+
+  <!-- STEP 1: How many players -->
+  <div class="setup-step active" id="step1">
+    <div class="setup-panel">
+      <h3>👥 How Many Players?</h3>
+      <p style="font-size:11px;color:var(--muted);letter-spacing:1.5px;margin-bottom:10px;text-transform:uppercase">Everyone takes turns as dealer each round</p>
+      <div class="hand-mode-grid" id="playerCountGrid" style="grid-template-columns: repeat(3,1fr)"></div>
+    </div>
+    <div class="step-nav">
+      <button class="btn btn-fire btn-lg btn-full" onclick="goStep(2)">Next →</button>
     </div>
   </div>
 
-  <div class="setup-panel">
-    <h3>🃏 Hands Per Round</h3>
-    <div class="hand-mode-grid" id="handModeGrid"></div>
-    <div class="hands-note" id="handModeNote"></div>
-  </div>
-
-  <div class="setup-panel">
-    <h3>Players <span style="font-size:13px;color:var(--muted);letter-spacing:1px" id="playerPanelSub"></span></h3>
-    <div id="playerRows"></div>
-    <div class="add-remove-row">
-      <button class="btn btn-outline btn-sm" onclick="addPlayer()">+ Add Player</button>
-      <button class="btn btn-ghost btn-sm" onclick="removePlayer()">− Remove</button>
+  <!-- STEP 2: Name players -->
+  <div class="setup-step" id="step2">
+    <div class="setup-panel">
+      <h3>✏️ Name Your Players</h3>
+      <div id="playerRows"></div>
     </div>
-    <div class="hands-note" id="handsNote"></div>
+    <div class="step-nav">
+      <button class="btn btn-ghost btn-md" style="flex:1" onclick="goStep(1)">← Back</button>
+      <button class="btn btn-fire btn-md" style="flex:2" onclick="goStep(3)">Next →</button>
+    </div>
   </div>
 
-  <div class="start-wrap">
-    <button class="btn btn-fire btn-lg btn-full" onclick="startGame()">🔥 Start Game</button>
+  <!-- STEP 3: Hands per round (difficulty) -->
+  <div class="setup-step" id="step3">
+    <div class="setup-panel">
+      <h3>🃏 Hands Per Round</h3>
+      <div class="hand-mode-grid" id="handModeGrid"></div>
+      <div class="hands-note" id="handModeNote"></div>
+    </div>
+    <div class="step-nav">
+      <button class="btn btn-ghost btn-md" style="flex:1" onclick="goStep(2)">← Back</button>
+      <button class="btn btn-fire btn-lg" style="flex:2" onclick="startGame()">🔥 Start Game</button>
+    </div>
   </div>
 </div>
 
@@ -821,6 +888,16 @@ html, body {
     <div id="totalScoresEl"></div>
   </div>
 
+  <div class="result-panel" id="burntPanel">
+    <h3>🔥 Cards Burnt This Round</h3>
+    <div id="roundBurntEl"></div>
+  </div>
+
+  <div class="result-panel" id="burntSessionPanel">
+    <h3>🔥 Cards Burnt All Rounds</h3>
+    <div id="sessionBurntEl"></div>
+  </div>
+
   <div class="result-btns">
     <button class="btn btn-fire btn-lg btn-full" onclick="nextRound()">Next Round 🔥</button>
     <button class="btn btn-ghost btn-md btn-full" onclick="goSetup()">Back to Setup</button>
@@ -863,47 +940,139 @@ const VALS  = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
 
 let G = {}; // game state
 
-// Setup players state
+// Setup state
 let setupPlayers = ['Player 1'];
-let selectedHandCount = 6; // default 6 hands
+let selectedHandCount = 6;
+let selectedPlayerCount = 1;
+let selectedDeckCount = 1;
+let currentStep = 1;
+const TOTAL_STEPS = 3;
 
 function initSetup() {
-  renderHandModeGrid();
+  currentStep = 1;
+  selectedPlayerCount = 1;
+  selectedHandCount = 6;
+  setupPlayers = ['Player 1'];
+  renderStepDots();
+  renderPlayerCountGrid();
   renderSetupRows();
+  renderHandModeGrid();
+  goStep(1);
+}
+
+function renderStepDots() {
+  const dots = document.getElementById('stepDots');
+  if (!dots) return;
+  dots.innerHTML = '';
+  for (let i = 1; i <= TOTAL_STEPS; i++) {
+    const d = document.createElement('div');
+    d.className = 'step-dot' + (i === currentStep ? ' active' : '');
+    dots.appendChild(d);
+  }
+}
+
+function goStep(n) {
+  currentStep = n;
+  for (let i = 1; i <= TOTAL_STEPS; i++) {
+    const el = document.getElementById(`step${i}`);
+    if (el) el.classList.toggle('active', i === n);
+  }
+  renderStepDots();
+}
+
+function renderPlayerCountGrid() {
+  const grid = document.getElementById('playerCountGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  for (let n = 1; n <= 7; n++) {
+    const btn = document.createElement('button');
+    btn.className = 'hand-mode-btn' + (n === selectedPlayerCount ? ' selected' : '');
+    btn.innerHTML = n;
+    btn.style.fontSize = '32px';
+    btn.style.fontFamily = "'Bebas Neue', sans-serif";
+    btn.style.letterSpacing = '1px';
+    btn.style.padding = '16px 6px';
+    btn.onclick = () => {
+      selectedPlayerCount = n;
+      // ALL n players are named — they all rotate as dealer each round
+      while (setupPlayers.length < n) setupPlayers.push(`Player ${setupPlayers.length + 1}`);
+      while (setupPlayers.length > n) setupPlayers.pop();
+      renderPlayerCountGrid();
+      renderSetupRows();
+      renderHandModeGrid();
+    };
+    grid.appendChild(btn);
+  }
+}
+
+function renderDeckCountGrid() {
+  const grid = document.getElementById('deckCountGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  const notes = {
+    1: 'Classic · 52 cards',
+    2: 'Extended · 104 cards',
+    3: 'Marathon · 156 cards',
+    4: 'Chaos · 208 cards 🔥'
+  };
+  [1, 2, 3, 4].forEach(n => {
+    const btn = document.createElement('button');
+    btn.className = 'hand-mode-btn' + (n === selectedDeckCount ? ' selected' : '');
+    btn.innerHTML = `${n}<span>${n === 1 ? 'DECK' : 'DECKS'}</span>`;
+    btn.onclick = () => {
+      selectedDeckCount = n;
+      renderDeckCountGrid();
+      const note = document.getElementById('deckNote');
+      if (note) note.textContent = notes[n];
+    };
+    grid.appendChild(btn);
+  });
+  const note = document.getElementById('deckNote');
+  if (note) note.textContent = notes[selectedDeckCount];
 }
 
 function renderHandModeGrid() {
   const grid = document.getElementById('handModeGrid');
+  if (!grid) return;
   grid.innerHTML = '';
   const options = [3, 4, 5, 6];
   const labels = { 3: 'NIGHTMARE', 4: 'HARD', 5: 'MEDIUM', 6: 'EASY' };
-  options.forEach(n => {
-    const btn = document.createElement('button');
-    btn.className = 'hand-mode-btn' + (n === selectedHandCount ? ' selected' : '');
-    btn.innerHTML = `${n}<span>${labels[n]}</span>`;
-    btn.onclick = () => {
-      selectedHandCount = n;
-      // Enforce player count doesn't exceed hand count
-      while (setupPlayers.length > n) setupPlayers.pop();
-      renderHandModeGrid();
-      renderSetupRows();
-    };
-    grid.appendChild(btn);
-  });
-  const note = document.getElementById('handModeNote');
   const descriptions = {
     3: '💀 NIGHTMARE — barely any room to survive',
     4: '🔥 HARD — one mistake can end it all',
     5: '⚡ MEDIUM — challenging but beatable',
     6: '😎 EASY — the full deck is on your side'
   };
-  note.textContent = descriptions[selectedHandCount];
+  options.forEach(n => {
+    const btn = document.createElement('button');
+    btn.className = 'hand-mode-btn' + (n === selectedHandCount ? ' selected' : '');
+    btn.innerHTML = `${n}<span>${labels[n]}</span>`;
+    btn.onclick = () => {
+      selectedHandCount = n;
+      // Only clamp if solo (no dealer rotation) and players exceed hands
+      if (G.players === undefined || G.players.length <= 1) {
+        const activePlayers = selectedPlayerCount; // solo
+        if (activePlayers > n) {
+          selectedPlayerCount = n;
+          while (setupPlayers.length > n) setupPlayers.pop();
+          renderPlayerCountGrid();
+          renderSetupRows();
+        }
+      }
+      // For multiplayer: n-1 players play hands, so hands only need to fit n-1
+      // (selectedPlayerCount can be up to 7, hands 3-6, fine as long as hands >= active players)
+      renderHandModeGrid();
+    };
+    grid.appendChild(btn);
+  });
+  const note = document.getElementById('handModeNote');
+  if (note) note.textContent = descriptions[selectedHandCount];
 }
 
 function renderSetupRows() {
   const cont = document.getElementById('playerRows');
+  if (!cont) return;
   cont.innerHTML = '';
-  const handDist = distributeHands(setupPlayers.length);
   setupPlayers.forEach((name, i) => {
     const div = document.createElement('div');
     div.className = 'player-entry';
@@ -911,40 +1080,44 @@ function renderSetupRows() {
       <label>P${i+1}</label>
       <input type="text" value="${name}" placeholder="Player ${i+1}"
              oninput="setupPlayers[${i}]=this.value" />
-      <span class="hand-count">${handDist[i]}H</span>
     `;
     cont.appendChild(div);
   });
-  const sub = document.getElementById('playerPanelSub');
-  if (sub) sub.textContent = `(1–${selectedHandCount} players · ${selectedHandCount} hands total)`;
-  document.getElementById('handsNote').textContent =
-    `${setupPlayers.length} player${setupPlayers.length>1?'s':''} · ${selectedHandCount} hands · ${handDist.join('+')} each`;
+}
+
+function distributeHandsN(playerCount, handCount) {
+  const total = Math.max(handCount, playerCount); // ensure at least 1 hand per active player
+  const base = Math.floor(total / playerCount);
+  const extra = total % playerCount;
+  return Array.from({length: playerCount}, (_, i) => base + (i < extra ? 1 : 0));
 }
 
 function distributeHands(n) {
-  const total = selectedHandCount;
-  const base = Math.floor(total / n);
-  const extra = total % n;
-  return Array.from({length: n}, (_, i) => base + (i < extra ? 1 : 0));
+  return distributeHandsN(n, selectedHandCount);
 }
 
 function addPlayer() {
-  if (setupPlayers.length >= selectedHandCount) { toast(`Max ${selectedHandCount} players for ${selectedHandCount} hands!`); return; }
+  if (setupPlayers.length >= selectedHandCount) return;
   setupPlayers.push(`Player ${setupPlayers.length + 1}`);
+  selectedPlayerCount = setupPlayers.length;
+  renderPlayerCountGrid();
   renderSetupRows();
 }
 function removePlayer() {
-  if (setupPlayers.length <= 1) { toast('Need at least 1 player'); return; }
+  if (setupPlayers.length <= 1) return;
   setupPlayers.pop();
+  selectedPlayerCount = setupPlayers.length;
+  renderPlayerCountGrid();
   renderSetupRows();
 }
 
 /* ═══════════════════════════════════════════════
    CARD HELPERS
 ═══════════════════════════════════════════════ */
-function buildDeck() {
+function buildDeck(count = 1) {
   const d = [];
-  for (const s of SUITS) for (const v of VALS) d.push({s, v});
+  for (let i = 0; i < count; i++)
+    for (const s of SUITS) for (const v of VALS) d.push({s, v});
   return shuffle(d);
 }
 function shuffle(a) {
@@ -1021,41 +1194,60 @@ function canDouble(hand) {
    GAME START / ROUND / PASS
 ═══════════════════════════════════════════════ */
 function startGame() {
-  // Read inputs
-  const dIn = document.getElementById('dealerInput');
-  const dealerName = dIn.value.trim() || 'Dealer';
   const pInputs = document.querySelectorAll('#playerRows input');
   const playerNames = [...pInputs].map((el, i) => el.value.trim() || `Player ${i+1}`);
 
   G = {
-    dealerName,
-    players: playerNames.map(name => ({ name, score: 0 })),
-    handDist: distributeHands(playerNames.length),
+    players: playerNames.map(name => ({ name, score: 0, cardsTotal: 0 })),
     totalHands: selectedHandCount,
     round: 0,
-    dealerScore: 0,
   };
 
+  // handDist is computed per-round based on who is NOT the dealer
   startRound();
 }
 
 function startRound() {
   G.round++;
-  G.deck = buildDeck();
+
+  // Rotate dealer through all players
+  const n = G.players.length;
+  if (n > 1) {
+    G.dealerPlayerIndex = (G.round - 1) % n;
+    G.dealerName = G.players[G.dealerPlayerIndex].name;
+  } else {
+    G.dealerPlayerIndex = -1; // solo — no rotating dealer
+    G.dealerName = 'Dealer';
+  }
+
+  // Non-dealer players this round
+  G.activePlayers = G.players
+    .map((p, i) => ({ ...p, originalIndex: i }))
+    .filter((_, i) => i !== G.dealerPlayerIndex);
+
+  // Distribute hands among non-dealer players (or all players if solo)
+  const handPlayers = n === 1 ? G.players.length : G.activePlayers.length;
+  G.handDist = distributeHandsN(handPlayers, selectedHandCount);
+
+  // Always 52 cards
+  G.deck = buildDeck(1);
   G.pass = 0;
 
-  // Build slot ownership: 6 slots assigned to players
-  // e.g. 2 players [3,3]: slots 0,1,2 → P0; 3,4,5 → P1
-  G.slots = []; // {playerIndex, eliminated: false, doubledGame: false}
-  let si = 0;
-  G.players.forEach((_, pi) => {
-    for (let h = 0; h < G.handDist[pi]; h++) {
-      G.slots.push({ playerIndex: pi, eliminated: false, doubledGame: false });
-      si++;
+  // Reset per-round burn counters for ALL players
+  G.roundBurnt = {};
+  G.players.forEach((_, pi) => G.roundBurnt[pi] = 0);
+  G.dealerRoundBurnt = 0;
+
+  G.slots = [];
+  const playersForSlots = G.players.length === 1
+    ? G.players.map((p, i) => ({ ...p, originalIndex: i }))
+    : G.activePlayers;
+  playersForSlots.forEach((p, hi) => {
+    const handsForThis = G.handDist[hi] || 1;
+    for (let h = 0; h < handsForThis; h++) {
+      G.slots.push({ playerIndex: p.originalIndex, eliminated: false, doubledGame: false });
     }
   });
-  // Verify total slots matches totalHands
-  // (handDist is already computed correctly via distributeHands)
 
   G.dealerHand = [];
   G.hands = []; // current pass hands
@@ -1089,23 +1281,25 @@ function startPass() {
   activeSlots.forEach((slot, i) => {
     const c1 = draw(), c2 = draw();
     if (!c1 || !c2) return; // deck ran out mid-deal — handled below
+    const pi = slot.playerIndex;
+    if (G.roundBurnt) G.roundBurnt[pi] = (G.roundBurnt[pi]||0) + 2; // 2 dealt cards
     G.hands.push({
       slotIndex: G.slots.indexOf(slot),
-      playerIndex: slot.playerIndex,
+      playerIndex: pi,
       cards: [c1, c2],
-      status: 'active', // active | stand | bust | blackjack | elim
+      status: 'active',
       doubled: false,
-      doubleUsed: slot.doubledGame, // carries over game-level double usage
+      doubleUsed: slot.doubledGame,
       isSplitHand: false,
       splitFrom: null,
-      result: null, // win | lose | push | bj | bust (set after dealer resolve)
+      result: null,
     });
   });
 
   // Dealer: 1 up, 1 down
   const dc1 = draw(), dc2 = draw();
-  if (dc1) G.dealerHand.push(dc1);
-  if (dc2) { dc2.down = true; G.dealerHand.push(dc2); }
+  if (dc1) { G.dealerHand.push(dc1); G.dealerRoundBurnt = (G.dealerRoundBurnt||0)+1; }
+  if (dc2) { dc2.down = true; G.dealerHand.push(dc2); G.dealerRoundBurnt = (G.dealerRoundBurnt||0)+1; }
 
   // Check deck ran out during deal
   if (!dc1 || !dc2 || G.hands.some(h => h.cards.length < 2)) {
@@ -1117,9 +1311,9 @@ function startPass() {
   for (const hand of G.hands) {
     if (isBlackjack(hand.cards)) {
       hand.status = 'blackjack';
-      for (let i = 0; i < 3; i++) { const bc = burn(); if (bc) hand.cards.push(bc); }
+      for (let i = 0; i < 3; i++) { const bc = burn(); if (bc) { hand.cards.push(bc); if (G.roundBurnt) G.roundBurnt[hand.playerIndex] = (G.roundBurnt[hand.playerIndex]||0)+1; } }
     } else if (isSixSeven(hand.cards)) {
-      const bc = burn(); if (bc) hand.cards.push(bc);
+      const bc = burn(); if (bc) { hand.cards.push(bc); if (G.roundBurnt) G.roundBurnt[hand.playerIndex] = (G.roundBurnt[hand.playerIndex]||0)+1; }
     }
     if (isKingNine(hand.cards)) {
       setTimeout(() => toast(`🐕 ${G.players[hand.playerIndex].name}: BARK BARK BARK!`), 300);
@@ -1154,6 +1348,8 @@ function hit(hi) {
   if (!c) { triggerShowdown(); return; }
   c._isNew = true;
   hand.cards.push(c);
+  // Count card towards player
+  if (G.roundBurnt && hand.playerIndex !== undefined) G.roundBurnt[hand.playerIndex] = (G.roundBurnt[hand.playerIndex] || 0) + 1;
   const val = handTotal(hand.cards);
   if (val > 21) { hand.status = 'bust'; }
   else if (val === 21) { hand.status = 'stand'; }
@@ -1178,8 +1374,8 @@ function doDouble(hi) {
   if (!hand.isSplitHand) {
     G.slots[hand.slotIndex].doubledGame = true;
   }
-  const c = draw(); if (c) hand.cards.push(c);
-  const bc = burn(); if (bc) hand.cards.push(bc);
+  const c = draw(); if (c) { hand.cards.push(c); if (G.roundBurnt) G.roundBurnt[hand.playerIndex] = (G.roundBurnt[hand.playerIndex]||0)+1; }
+  const bc = burn(); if (bc) { hand.cards.push(bc); if (G.roundBurnt) G.roundBurnt[hand.playerIndex] = (G.roundBurnt[hand.playerIndex]||0)+1; }
   const val = handTotal(hand.cards.filter(x => !x.burned));
   hand.status = val > 21 ? 'bust' : 'stand';
   updateDeckDisplay();
@@ -1192,6 +1388,11 @@ function doSplit(hi) {
   if (!canSplit(hand)) return;
   const c1 = hand.cards[0], c2 = hand.cards[1];
   const n1 = draw(), n2 = draw();
+  // Count the 2 new split cards towards this player
+  if (G.roundBurnt) {
+    if (n1) G.roundBurnt[hand.playerIndex] = (G.roundBurnt[hand.playerIndex]||0)+1;
+    if (n2) G.roundBurnt[hand.playerIndex] = (G.roundBurnt[hand.playerIndex]||0)+1;
+  }
 
   hand.cards = [c1];
   if (n1) hand.cards.push(n1);
@@ -1274,6 +1475,7 @@ function dealerDraw() {
     if (!c) { triggerShowdown(); return; }
     c._isNew = true;
     G.dealerHand.push(c);
+    G.dealerRoundBurnt = (G.dealerRoundBurnt||0)+1;
     updateDeckDisplay();
     renderGame();
     const newVal = handTotal(G.dealerHand);
@@ -1384,15 +1586,30 @@ function resolveHands(isShowdown = false) {
 function endRound(playersWin, showdown = false) {
   const cardsLeft = G.deck.length;
 
-  if (playersWin) {
-    // Players win: flat 52 points each, no bonus
-    G.players.forEach(p => p.score += 52);
-    G._lastRoundBonus = 0;
+  if (G.players.length === 1) {
+    // Solo: no rotating dealer, old logic
+    if (playersWin) {
+      G.players[0].score += 52;
+    }
+    // No dealer score tracking needed for solo
   } else {
-    // Dealer gets cards remaining
-    G.dealerScore = (G.dealerScore || 0) + cardsLeft;
-    G._lastRoundBonus = 0;
+    if (playersWin) {
+      // Non-dealer players each get 52
+      G.players.forEach((p, pi) => {
+        if (pi !== G.dealerPlayerIndex) p.score += 52;
+      });
+      // Dealer gets 0 (lost)
+    } else {
+      // Dealer wins: dealer player gets cards remaining
+      G.players[G.dealerPlayerIndex].score += cardsLeft;
+      // Non-dealers get 0
+    }
   }
+
+  // Accumulate session burn totals
+  G.players.forEach((p, pi) => {
+    p.cardsTotal = (p.cardsTotal || 0) + (G.roundBurnt[pi] || 0);
+  });
 
   showResultScreen(playersWin, cardsLeft, showdown);
 }
@@ -1400,42 +1617,98 @@ function endRound(playersWin, showdown = false) {
 function showResultScreen(playersWin, cardsLeft, showdown) {
   showScreen('result');
 
-  document.getElementById('resultHeadline').textContent = playersWin ? '🔥 PLAYERS WIN!' : '💀 DEALER WINS';
+  const solo = G.players.length === 1;
+  const dealerName = solo ? 'Dealer' : G.dealerName;
+
+  document.getElementById('resultHeadline').textContent = playersWin ? '🔥 PLAYERS WIN!' : `💀 ${dealerName.toUpperCase()} WINS`;
   document.getElementById('resultHeadline').className = 'result-headline ' + (playersWin ? 'rh-win' : 'rh-lose');
 
-  let sub = playersWin
-    ? (showdown ? 'Showdown victory — deck exhausted' : 'Deck exhausted — team survives!')
-    : 'All hands eliminated before deck ran out';
+  // Subtitle
+  let sub = '';
+  if (!solo) {
+    const nextDealerIdx = G.round % G.players.length;
+    const nextDealer = G.players[nextDealerIdx].name;
+    sub = `${dealerName} dealt · Next: ${nextDealer} deals`;
+  } else {
+    sub = playersWin
+      ? (showdown ? 'Showdown victory — deck exhausted' : 'Deck exhausted — team survives!')
+      : 'All hands eliminated before deck ran out';
+  }
   document.getElementById('resultSub').textContent = sub;
 
-  // Round scores
+  // Round scoring — each player listed individually
   const rs = document.getElementById('roundScores');
   rs.innerHTML = '';
-  const bonus = G._lastRoundBonus || 0;
-  const dealerPts = playersWin ? 0 : cardsLeft;
+  if (solo) {
+    rs.innerHTML += scoreRow('Players', playersWin ? 52 : 0, playersWin);
+  } else {
+    G.players.forEach((p, pi) => {
+      const isDealer = pi === G.dealerPlayerIndex;
+      let pts = 0;
+      if (isDealer && !playersWin) pts = cardsLeft;
+      if (!isDealer && playersWin) pts = 52;
+      rs.innerHTML += scoreRow(p.name + (isDealer ? ' 🔥' : ''), pts, pts > 0);
+    });
+  }
 
-  rs.innerHTML += scoreRow(G.dealerName + ' 🔥', dealerPts, !playersWin);
-  G.players.forEach(p => {
-    const pts = playersWin ? 52 : 0;
-    rs.innerHTML += scoreRow(p.name, pts, playersWin);
-  });
-
-  // Total
+  // Total scores — all players sorted high to low
   const ts = document.getElementById('totalScoresEl');
   ts.innerHTML = '';
-  const allPlayers = [
-    { name: G.dealerName + ' 🔥', score: G.dealerScore || 0 },
-    ...G.players
-  ].sort((a,b) => b.score - a.score);
-  allPlayers.forEach(p => {
-    ts.innerHTML += scoreRow(p.name, p.score, true);
+  [...G.players]
+    .sort((a, b) => b.score - a.score)
+    .forEach(p => ts.innerHTML += totalScoreRow(p.name, p.score));
+
+  // Cards burnt
+  const multiPlayer = G.players.length > 1;
+  const burntSessionPanel = document.getElementById('burntSessionPanel');
+
+  const rb = document.getElementById('roundBurntEl');
+  rb.innerHTML = '';
+  const roundEntries = G.players.map((p, pi) => ({ name: p.name, count: G.roundBurnt[pi] || 0 }))
+    .filter(e => e.count > 0).sort((a, b) => b.count - a.count);
+  const roundTotal = roundEntries.reduce((s, e) => s + e.count, 0);
+  if (roundEntries.length) {
+    roundEntries.forEach(e => {
+      const pct = roundTotal > 0 ? Math.round(e.count / roundTotal * 100) : 0;
+      rb.innerHTML += burntRow(e.name, e.count, pct, multiPlayer);
+    });
+  } else {
+    rb.innerHTML = `<div style="color:var(--muted);font-size:12px;padding:6px 0">No data</div>`;
+  }
+
+  const sb = document.getElementById('sessionBurntEl');
+  sb.innerHTML = '';
+  const sessionEntries = G.players.map(p => ({ name: p.name, count: p.cardsTotal || 0 }))
+    .sort((a, b) => b.count - a.count);
+  const sessionTotal = sessionEntries.reduce((s, e) => s + e.count, 0);
+  sessionEntries.forEach(e => {
+    const pct = sessionTotal > 0 ? Math.round(e.count / sessionTotal * 100) : 0;
+    sb.innerHTML += burntRow(e.name, e.count, pct, multiPlayer);
   });
+
+  burntSessionPanel.style.display = G.round > 1 ? '' : 'none';
+}
+
+function burntRow(name, count, pct, showBar) {
+  return `<div class="burnt-row">
+    <div class="burnt-top">
+      <span class="burnt-name">${name}</span>
+      <span class="burnt-count">${count} <span style="font-size:11px;color:var(--muted)">cards</span>${showBar ? `<span class="burnt-pct">${pct}%</span>` : ''}</span>
+    </div>
+    ${showBar ? `<div class="burnt-bar-wrap"><div class="burnt-bar" style="width:${pct}%"></div></div>` : ''}
+  </div>`;
 }
 
 function scoreRow(name, pts, highlight) {
   return `<div class="score-row">
     <span>${name}</span>
     <span class="sr-pts ${highlight && pts > 0 ? 'green' : pts===0 ? 'gray' : ''}">${pts > 0 ? '+' : ''}${pts}</span>
+  </div>`;
+}
+function totalScoreRow(name, pts) {
+  return `<div class="score-row">
+    <span>${name}</span>
+    <span class="sr-pts ${pts > 0 ? 'green' : 'gray'}">${pts}</span>
   </div>`;
 }
 
@@ -1626,7 +1899,10 @@ function mkCard(c, opts = {}) {
 function updateTopBar() {
   document.getElementById('topRound').textContent = `ROUND ${G.round} · ${G.totalHands} HANDS`;
   document.getElementById('topPass').textContent = `PASS ${G.pass || 1}`;
-  document.getElementById('topDealer').textContent = `🔥 ${G.dealerName}`;
+  const dealerLabel = G.players.length > 1
+    ? `🔥 ${G.dealerName} deals`
+    : `🔥 Dealer`;
+  document.getElementById('topDealer').textContent = dealerLabel;
   updateDeckDisplay();
 }
 function updateDeckDisplay() {
@@ -1665,8 +1941,8 @@ function openScores() {
   const list = document.getElementById('modalScoresList');
   list.innerHTML = '';
   const all = [
-    { name: (G.dealerName || 'Dealer') + ' 🔥', score: G.dealerScore || 0 },
-    ...(G.players || [])
+    { name: 'Dealer 🔥', score: G.dealerScore || 0 },
+    { name: 'Players', score: G.players?.[0]?.score || 0 }
   ].sort((a,b) => b.score - a.score);
   all.forEach((p, i) => {
     const medal = ['🥇','🥈','🥉'][i] || '  ';
@@ -1675,6 +1951,10 @@ function openScores() {
       <span class="sr-pts">${p.score}</span>
     </div>`;
   });
+  // Show current dealer if multiplayer
+  if (G.players && G.players.length > 1 && G.dealerName) {
+    list.innerHTML += `<div style="text-align:center;font-size:11px;color:var(--muted);letter-spacing:2px;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.06)">THIS ROUND: ${G.dealerName.toUpperCase()} IS DEALER</div>`;
+  }
   document.getElementById('scoresOverlay').classList.add('open');
 }
 function closeScores() {
