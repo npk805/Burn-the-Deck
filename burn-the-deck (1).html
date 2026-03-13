@@ -1,0 +1,1564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Burn the Deck">
+<title>🔥 BURN THE DECK</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Crimson+Pro:wght@400;600;700&family=Oswald:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --fire1: #ff3d00;
+  --fire2: #ff6d00;
+  --fire3: #ffab00;
+  --ember: #ff1a00;
+  --bg: #080808;
+  --bg2: #101010;
+  --bg3: #161410;
+  --bg4: #1c1a16;
+  --card-bg: #f2ece0;
+  --card-red: #c0392b;
+  --card-black: #111;
+  --gold: #c9962a;
+  --gold2: #e8b84b;
+  --text: #ede0cc;
+  --muted: #7a6a56;
+  --green: #27ae60;
+  --green2: #2ecc71;
+  --blue: #2980b9;
+  --r: 10px;
+  --r-sm: 6px;
+}
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Oswald', sans-serif;
+  overflow: hidden;
+}
+
+/* ── SCREENS ── */
+.screen { display:none; position:fixed; inset:0; flex-direction:column; overflow:hidden; }
+.screen.active { display:flex; }
+
+/* ══════════════════════════════════════
+   SETUP SCREEN
+══════════════════════════════════════ */
+#setup {
+  background:
+    radial-gradient(ellipse at 15% 85%, rgba(255,61,0,0.12) 0%, transparent 55%),
+    radial-gradient(ellipse at 85% 10%, rgba(255,109,0,0.07) 0%, transparent 50%),
+    var(--bg);
+  align-items: center;
+  justify-content: flex-start;
+  overflow-y: auto;
+  padding: 32px 20px 40px;
+  gap: 0;
+}
+
+.logo-block { text-align:center; margin-bottom: 24px; }
+.logo-fire { font-size: 36px; margin-bottom:4px; filter: drop-shadow(0 0 12px rgba(255,80,0,0.9)); }
+.logo-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(56px, 16vw, 88px);
+  letter-spacing: 5px;
+  line-height: 0.88;
+  background: linear-gradient(160deg, #fff 0%, var(--fire3) 35%, var(--fire1) 80%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 0 24px rgba(255,61,0,0.4));
+}
+.logo-sub {
+  font-size: 11px;
+  letter-spacing: 5px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-top: 6px;
+}
+
+.setup-panel {
+  background: var(--bg2);
+  border: 1px solid rgba(255,100,0,0.18);
+  border-radius: var(--r);
+  padding: 20px;
+  width: 100%;
+  max-width: 440px;
+  margin-bottom: 16px;
+}
+.setup-panel h3 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 17px;
+  letter-spacing: 3px;
+  color: var(--fire2);
+  margin-bottom: 14px;
+}
+
+.player-entry {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.player-entry label {
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: var(--muted);
+  text-transform: uppercase;
+  min-width: 54px;
+}
+.player-entry input {
+  flex: 1;
+  background: var(--bg3);
+  border: 1px solid rgba(255,100,0,0.2);
+  border-radius: var(--r-sm);
+  color: var(--text);
+  font-family: 'Oswald', sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  padding: 10px 12px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.player-entry input:focus { border-color: var(--fire2); }
+.hand-count {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 14px;
+  color: var(--gold);
+  background: rgba(201,150,42,0.12);
+  border: 1px solid rgba(201,150,42,0.25);
+  border-radius: 20px;
+  padding: 3px 8px;
+  min-width: 36px;
+  text-align: center;
+}
+
+.add-remove-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.hands-note {
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 1px;
+  text-align: center;
+  margin-top: 8px;
+}
+
+.btn {
+  border: none;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  font-family: 'Bebas Neue', sans-serif;
+  letter-spacing: 1.5px;
+  transition: all 0.15s;
+  -webkit-appearance: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+.btn:active { transform: scale(0.95); opacity: 0.85; }
+
+.btn-fire {
+  background: linear-gradient(135deg, var(--fire1) 0%, var(--fire2) 100%);
+  color: #fff;
+  box-shadow: 0 4px 18px rgba(255,61,0,0.3);
+}
+.btn-outline {
+  background: transparent;
+  border: 1px solid rgba(255,100,0,0.3);
+  color: var(--fire2);
+}
+.btn-ghost {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
+  color: var(--muted);
+}
+.btn-green {
+  background: linear-gradient(135deg, #1e8449, var(--green2));
+  color: #fff;
+  box-shadow: 0 3px 12px rgba(46,204,113,0.25);
+}
+.btn-gold {
+  background: linear-gradient(135deg, #8a6000, var(--gold2));
+  color: #fff;
+}
+.btn-blue {
+  background: linear-gradient(135deg, #1a5276, var(--blue));
+  color: #fff;
+}
+.btn-danger {
+  background: rgba(192,57,43,0.18);
+  border: 1px solid rgba(192,57,43,0.35);
+  color: #e74c3c;
+}
+.btn-lg { padding: 15px 20px; font-size: 20px; }
+.btn-md { padding: 11px 16px; font-size: 16px; }
+.btn-sm { padding: 8px 12px; font-size: 13px; }
+.btn-xs { padding: 6px 10px; font-size: 12px; }
+.btn-full { width: 100%; }
+
+.start-wrap {
+  width: 100%;
+  max-width: 440px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ══════════════════════════════════════
+   GAME SCREEN
+══════════════════════════════════════ */
+#game {
+  background:
+    radial-gradient(ellipse at 10% 90%, rgba(255,61,0,0.06) 0%, transparent 50%),
+    var(--bg);
+}
+
+/* Top bar */
+.top-bar {
+  background: var(--bg2);
+  border-bottom: 1px solid rgba(255,100,0,0.15);
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  min-height: 52px;
+}
+.top-left { display:flex; flex-direction:column; gap:1px; }
+.top-deck {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 26px;
+  color: var(--fire2);
+  line-height: 1;
+}
+.top-deck-label { font-size: 9px; letter-spacing: 2px; color: var(--muted); text-transform:uppercase; }
+
+.top-center { text-align:center; }
+.top-round { font-size: 10px; letter-spacing: 3px; color: var(--muted); text-transform: uppercase; }
+.top-pass { font-family: 'Bebas Neue', sans-serif; font-size: 18px; color: var(--text); letter-spacing:1px; }
+.top-dealer { font-size: 11px; color: var(--fire3); letter-spacing:1px; }
+
+.top-right { display:flex; gap:6px; }
+.scores-btn {
+  background: rgba(201,150,42,0.12);
+  border: 1px solid rgba(201,150,42,0.25);
+  border-radius: var(--r-sm);
+  color: var(--gold2);
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 12px;
+  letter-spacing: 1px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+/* Phase strip */
+.phase-strip {
+  background: rgba(255,100,0,0.06);
+  border-bottom: 1px solid rgba(255,100,0,0.12);
+  padding: 5px 14px;
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: var(--fire2);
+  text-align: center;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+/* Dealer zone */
+.dealer-zone {
+  background: linear-gradient(180deg, #0b140b 0%, var(--bg3) 100%);
+  border-bottom: 1px solid rgba(255,100,0,0.1);
+  padding: 10px 12px 12px;
+  flex-shrink: 0;
+}
+.zone-label {
+  font-size: 9px;
+  letter-spacing: 3px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 7px;
+  text-align: center;
+}
+.dealer-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-height: 72px;
+}
+.dealer-val {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 30px;
+  color: var(--fire2);
+  margin-left: 8px;
+}
+
+/* Scroll area */
+.scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 10px 10px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Bottom bar */
+.bottom-bar {
+  background: var(--bg2);
+  border-top: 1px solid rgba(255,100,0,0.15);
+  padding: 10px 12px;
+  flex-shrink: 0;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ── HAND CARDS ── */
+.hand-card {
+  background: var(--bg2);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: var(--r);
+  padding: 10px 12px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.hand-card.is-active {
+  border-color: var(--fire2);
+  box-shadow: 0 0 18px rgba(255,100,0,0.18);
+}
+.hand-card.is-elim {
+  opacity: 0.38;
+  border-color: rgba(255,30,0,0.15);
+}
+.hand-card.is-stand { border-color: rgba(201,150,42,0.3); }
+.hand-card.is-bj {
+  border-color: rgba(46,204,113,0.4);
+  box-shadow: 0 0 12px rgba(46,204,113,0.12);
+}
+.hand-card.is-bust { border-color: rgba(231,76,60,0.3); }
+.hand-card.is-winner { border-color: var(--green2); box-shadow: 0 0 16px rgba(46,204,113,0.2); }
+
+.hc-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.hc-name {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 18px;
+  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.hc-hand-num {
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 1px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+.hc-status {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  padding: 3px 8px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.s-active  { background: rgba(255,100,0,0.12); color: var(--fire2); border:1px solid rgba(255,100,0,0.25); }
+.s-stand   { background: rgba(201,150,42,0.12); color: var(--gold2); border:1px solid rgba(201,150,42,0.25); }
+.s-bust    { background: rgba(231,76,60,0.12); color: #e74c3c; border:1px solid rgba(231,76,60,0.25); }
+.s-bj      { background: rgba(46,204,113,0.12); color: var(--green2); border:1px solid rgba(46,204,113,0.25); }
+.s-elim    { background: rgba(80,80,80,0.12); color: #555; border:1px solid rgba(80,80,80,0.2); }
+.s-win     { background: rgba(46,204,113,0.15); color: var(--green2); border:1px solid rgba(46,204,113,0.3); }
+.s-lose    { background: rgba(231,76,60,0.1); color: #c0392b; border:1px solid rgba(231,76,60,0.2); }
+.s-push    { background: rgba(41,128,185,0.12); color: #5dade2; border:1px solid rgba(41,128,185,0.25); }
+
+.hc-body { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.cards-wrap { display:flex; gap:4px; flex-wrap:wrap; align-items:flex-end; }
+
+/* PLAYING CARDS */
+.card {
+  width: 42px;
+  height: 60px;
+  border-radius: 5px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  position: relative;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.55);
+}
+.card-live {
+  background: var(--card-bg);
+  border: 1px solid rgba(0,0,0,0.12);
+}
+.card-live .cv { font-family: 'Crimson Pro', serif; font-size: 20px; font-weight:700; line-height:1; }
+.card-live .cs { font-size: 12px; line-height:1; }
+.card-live.red .cv, .card-live.red .cs { color: var(--card-red); }
+.card-live.blk .cv, .card-live.blk .cs { color: var(--card-black); }
+
+.card-down {
+  background: repeating-linear-gradient(
+    45deg,
+    #0e1a2e,
+    #0e1a2e 4px,
+    #0d2244 4px,
+    #0d2244 8px
+  );
+  border: 2px solid rgba(255,255,255,0.08);
+}
+.card-down::after { content:'🂠'; font-size:30px; opacity:0.25; }
+
+.card-burned {
+  background: linear-gradient(135deg, #1e0a00, #2a0f00);
+  border: 1px solid rgba(255,61,0,0.2);
+  opacity: 0.45;
+}
+.card-burned::after { content:'🔥'; font-size:18px; }
+
+@keyframes cardDeal {
+  from { opacity:0; transform: translateY(-16px) scale(0.8) rotate(-4deg); }
+  to   { opacity:1; transform: translateY(0) scale(1) rotate(0deg); }
+}
+.card { animation: cardDeal 0.22s cubic-bezier(0.34,1.4,0.64,1) both; }
+
+/* 3D flip for face-down → face-up reveal */
+.card-flip-container {
+  perspective: 600px;
+  width: 42px;
+  height: 60px;
+  flex-shrink: 0;
+  display: inline-block;
+}
+.card-flip-inner {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.45s cubic-bezier(0.4,0,0.2,1);
+}
+.card-flip-container.flipped .card-flip-inner {
+  transform: rotateY(180deg);
+}
+.card-flip-front, .card-flip-back {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: 5px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.55);
+}
+.card-flip-front {
+  transform: rotateY(180deg);
+  background: var(--card-bg);
+  border: 1px solid rgba(0,0,0,0.12);
+}
+.card-flip-back {
+  background: repeating-linear-gradient(
+    45deg, #0e1a2e, #0e1a2e 4px, #0d2244 4px, #0d2244 8px
+  );
+  border: 2px solid rgba(255,255,255,0.08);
+}
+.card-flip-back::after { content:'🂠'; font-size:30px; opacity:0.25; }
+.card-flip-front .cv { font-family:'Crimson Pro',serif; font-size:20px; font-weight:700; line-height:1; }
+.card-flip-front .cs { font-size:12px; line-height:1; }
+.card-flip-front.red .cv, .card-flip-front.red .cs { color: var(--card-red); }
+.card-flip-front.blk .cv, .card-flip-front.blk .cs { color: var(--card-black); }
+
+/* slide-in for hit cards */
+@keyframes cardSlideIn {
+  from { opacity:0; transform: translateX(22px) scale(0.88); }
+  to   { opacity:1; transform: translateX(0) scale(1); }
+}
+.card-new { animation: cardSlideIn 0.28s cubic-bezier(0.34,1.3,0.64,1) both !important; }
+
+.hc-val {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 28px;
+  min-width: 36px;
+  text-align: center;
+}
+.hc-val.v-bust { color: #e74c3c; }
+.hc-val.v-bj   { color: var(--green2); }
+.hc-val.v-high { color: var(--fire3); }
+.hc-val.v-ok   { color: var(--text); }
+
+/* Inline action buttons - stacked vertically */
+.hc-actions { display:flex; flex-direction:column; gap:7px; margin-top:10px; }
+.hc-actions .btn { width: 100%; padding: 11px 16px; font-size: 15px; letter-spacing: 2px; }
+
+/* Result overlay on card */
+.hc-result {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 14px;
+  letter-spacing: 2px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  margin-left: auto;
+}
+
+/* split label */
+.split-label {
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--gold);
+  text-transform: uppercase;
+  margin-bottom: 3px;
+}
+
+/* ══════════════════════════════════════
+   RESULT / END SCREEN
+══════════════════════════════════════ */
+#result {
+  background:
+    radial-gradient(ellipse at 50% 20%, rgba(255,61,0,0.1) 0%, transparent 60%),
+    var(--bg);
+  align-items: center;
+  justify-content: flex-start;
+  overflow-y: auto;
+  padding: 30px 20px 44px;
+  gap: 18px;
+}
+
+.result-hero {
+  text-align: center;
+}
+.result-headline {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(50px, 16vw, 80px);
+  letter-spacing: 4px;
+  line-height: 1;
+}
+.rh-win {
+  background: linear-gradient(135deg, #27ae60, var(--green2), #abebc6);
+  -webkit-background-clip: text; -webkit-text-fill-color:transparent; background-clip:text;
+  filter: drop-shadow(0 0 20px rgba(46,204,113,0.45));
+}
+.rh-lose {
+  background: linear-gradient(135deg, var(--fire1), var(--fire3));
+  -webkit-background-clip: text; -webkit-text-fill-color:transparent; background-clip:text;
+  filter: drop-shadow(0 0 20px rgba(255,61,0,0.5));
+}
+.result-sub {
+  font-size: 13px;
+  letter-spacing: 3px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-top: 6px;
+}
+
+.result-panel {
+  background: var(--bg2);
+  border: 1px solid rgba(255,100,0,0.15);
+  border-radius: var(--r);
+  padding: 18px;
+  width: 100%;
+  max-width: 440px;
+}
+.result-panel h3 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 16px;
+  letter-spacing: 3px;
+  color: var(--fire2);
+  margin-bottom: 12px;
+  text-transform: uppercase;
+}
+
+.score-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 7px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  font-size: 15px;
+}
+.score-row:last-child { border-bottom: none; }
+.sr-pts {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 22px;
+  color: var(--fire2);
+}
+.sr-pts.green { color: var(--green2); }
+.sr-pts.gray  { color: var(--muted); }
+
+.result-btns {
+  width: 100%;
+  max-width: 440px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ══════════════════════════════════════
+   MODAL
+══════════════════════════════════════ */
+.overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.88);
+  z-index: 200;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.overlay.open { display:flex; }
+.modal {
+  background: var(--bg2);
+  border: 1px solid rgba(255,100,0,0.25);
+  border-radius: var(--r);
+  padding: 22px;
+  width: 100%;
+  max-width: 380px;
+  max-height: 80dvh;
+  overflow-y: auto;
+}
+.modal h2 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 24px;
+  letter-spacing: 3px;
+  color: var(--fire2);
+  margin-bottom: 14px;
+}
+
+/* TOAST */
+.toast {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-90px);
+  background: var(--bg2);
+  border: 1px solid rgba(255,100,0,0.4);
+  border-radius: var(--r);
+  padding: 11px 18px;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 17px;
+  letter-spacing: 2px;
+  color: var(--fire3);
+  z-index: 999;
+  transition: transform 0.28s cubic-bezier(0.34,1.56,0.64,1);
+  pointer-events: none;
+  text-align: center;
+  max-width: 90vw;
+}
+.toast.show { transform: translateX(-50%) translateY(0); }
+
+/* scrollbar */
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-thumb { background: rgba(255,100,0,0.25); border-radius: 2px; }
+
+/* pulse */
+@keyframes pulse {
+  0%,100% { box-shadow: 0 0 18px rgba(255,100,0,0.18); }
+  50%      { box-shadow: 0 0 28px rgba(255,100,0,0.4); }
+}
+.hand-card.is-active { animation: pulse 2s infinite; }
+
+/* low deck warning */
+.deck-low { color: #e74c3c !important; }
+</style>
+</head>
+<body>
+
+<!-- ═══ SETUP ═══ -->
+<div id="setup" class="screen active">
+  <div class="logo-block">
+    <div class="logo-fire">🔥</div>
+    <div class="logo-title">BURN<br>THE DECK</div>
+    <div class="logo-sub">Cooperative Blackjack</div>
+  </div>
+
+  <div class="setup-panel">
+    <h3>🔥 Dealer</h3>
+    <div class="player-entry">
+      <label>Dealer</label>
+      <input type="text" id="dealerInput" placeholder="Dealer name" value="Dealer" />
+    </div>
+  </div>
+
+  <div class="setup-panel">
+    <h3>Players <span style="font-size:13px;color:var(--muted);letter-spacing:1px">(2–6 · total 6 hands)</span></h3>
+    <div id="playerRows"></div>
+    <div class="add-remove-row">
+      <button class="btn btn-outline btn-sm" onclick="addPlayer()">+ Add Player</button>
+      <button class="btn btn-ghost btn-sm" onclick="removePlayer()">− Remove</button>
+    </div>
+    <div class="hands-note" id="handsNote"></div>
+  </div>
+
+  <div class="start-wrap">
+    <button class="btn btn-fire btn-lg btn-full" onclick="startGame()">🔥 Start Game</button>
+  </div>
+</div>
+
+<!-- ═══ GAME ═══ -->
+<div id="game" class="screen">
+  <div class="top-bar">
+    <div class="top-left">
+      <div class="top-deck" id="topDeck">52</div>
+      <div class="top-deck-label">Cards Left</div>
+    </div>
+    <div class="top-center">
+      <div class="top-round" id="topRound">ROUND 1</div>
+      <div class="top-pass" id="topPass">PASS 1</div>
+      <div class="top-dealer" id="topDealer">🔥 Dealer</div>
+    </div>
+    <div class="top-right">
+      <button class="scores-btn" onclick="openScores()">SCORES</button>
+    </div>
+  </div>
+
+  <div class="phase-strip" id="phaseStrip">Dealing</div>
+
+  <div class="dealer-zone">
+    <div class="zone-label">Dealer Hand</div>
+    <div class="dealer-row" id="dealerRow"></div>
+  </div>
+
+  <div class="scroll-area" id="scrollArea"></div>
+
+  <div class="bottom-bar" id="bottomBar"></div>
+</div>
+
+<!-- ═══ RESULT ═══ -->
+<div id="result" class="screen">
+  <div class="result-hero">
+    <div class="result-headline" id="resultHeadline">PLAYERS WIN</div>
+    <div class="result-sub" id="resultSub">Round complete</div>
+  </div>
+
+  <div class="result-panel">
+    <h3>Round Scoring</h3>
+    <div id="roundScores"></div>
+  </div>
+
+  <div class="result-panel">
+    <h3>Total Scores</h3>
+    <div id="totalScoresEl"></div>
+  </div>
+
+  <div class="result-btns">
+    <button class="btn btn-fire btn-lg btn-full" onclick="nextRound()">Next Round 🔥</button>
+    <button class="btn btn-ghost btn-md btn-full" onclick="goSetup()">Back to Setup</button>
+  </div>
+</div>
+
+<!-- ═══ SCORES MODAL ═══ -->
+<div class="overlay" id="scoresOverlay" onclick="if(event.target===this)closeScores()">
+  <div class="modal">
+    <h2>🏆 Scoreboard</h2>
+    <div id="modalScoresList"></div>
+    <button class="btn btn-ghost btn-md btn-full" style="margin-top:16px" onclick="closeScores()">Close</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+/* ═══════════════════════════════════════════════
+   DATA & STATE
+═══════════════════════════════════════════════ */
+const SUITS = ['♠','♥','♦','♣'];
+const VALS  = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+
+let G = {}; // game state
+
+// Setup players state
+let setupPlayers = ['Player 1'];
+
+function initSetup() {
+  renderSetupRows();
+}
+
+function renderSetupRows() {
+  const cont = document.getElementById('playerRows');
+  cont.innerHTML = '';
+  const handDist = distributeHands(setupPlayers.length);
+  setupPlayers.forEach((name, i) => {
+    const div = document.createElement('div');
+    div.className = 'player-entry';
+    div.innerHTML = `
+      <label>P${i+1}</label>
+      <input type="text" value="${name}" placeholder="Player ${i+1}"
+             oninput="setupPlayers[${i}]=this.value" />
+      <span class="hand-count">${handDist[i]}H</span>
+    `;
+    cont.appendChild(div);
+  });
+  document.getElementById('handsNote').textContent =
+    `${setupPlayers.length} players · 6 hands total · ${handDist.join('+')} hands each`;
+}
+
+function distributeHands(n) {
+  // Distribute 6 hands as evenly as possible
+  const base = Math.floor(6 / n);
+  const extra = 6 % n;
+  return Array.from({length: n}, (_, i) => base + (i < extra ? 1 : 0));
+}
+
+function addPlayer() {
+  if (setupPlayers.length >= 6) { toast('Max 6 players!'); return; }
+  setupPlayers.push(`Player ${setupPlayers.length + 1}`);
+  renderSetupRows();
+}
+function removePlayer() {
+  if (setupPlayers.length <= 1) { toast('Need at least 1 player'); return; }
+  setupPlayers.pop();
+  renderSetupRows();
+}
+
+/* ═══════════════════════════════════════════════
+   CARD HELPERS
+═══════════════════════════════════════════════ */
+function buildDeck() {
+  const d = [];
+  for (const s of SUITS) for (const v of VALS) d.push({s, v});
+  return shuffle(d);
+}
+function shuffle(a) {
+  const b = [...a];
+  for (let i = b.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [b[i], b[j]] = [b[j], b[i]];
+  }
+  return b;
+}
+function cval(card) {
+  if (['J','Q','K'].includes(card.v)) return 10;
+  if (card.v === 'A') return 11;
+  return +card.v;
+}
+function isRed(card) { return card.s === '♥' || card.s === '♦'; }
+
+function handTotal(cards) {
+  let total = 0, aces = 0;
+  for (const c of cards) {
+    if (c.burned) continue;
+    const v = cval(c);
+    if (c.v === 'A') aces++;
+    total += v;
+  }
+  while (total > 21 && aces > 0) { total -= 10; aces--; }
+  return total;
+}
+
+function draw() {
+  if (!G.deck.length) return null;
+  return G.deck.shift();
+}
+function burn() {
+  if (!G.deck.length) return null;
+  const c = G.deck.shift();
+  c.burned = true;
+  return c;
+}
+
+function isBlackjack(cards) {
+  if (cards.length !== 2) return false;
+  const vs = cards.map(c => c.v);
+  return vs.includes('A') && cards.some(c => ['10','J','Q','K'].includes(c.v));
+}
+function isSixSeven(cards) {
+  if (cards.length !== 2) return false;
+  const ns = cards.map(c => +c.v).filter(n => !isNaN(n)).sort((a,b)=>a-b);
+  return (ns[0]===6 && ns[1]===7) || (ns[0]===6 && ns[1]===9);
+}
+function isKingNine(cards) {
+  if (cards.length !== 2) return false;
+  const vs = cards.map(c => c.v);
+  return vs.includes('K') && vs.includes('9');
+}
+function isFaceCard(card) { return ['J','Q','K'].includes(card.v); }
+function splitGroup(card) {
+  // 10 is its own group; J/Q/K are all one group
+  if (card.v === '10') return '10';
+  if (isFaceCard(card)) return 'face';
+  return card.v;
+}
+function canSplit(hand) {
+  if (hand.cards.length !== 2) return false;
+  return splitGroup(hand.cards[0]) === splitGroup(hand.cards[1]);
+}
+function canDouble(hand) {
+  // Can double at any point in the hand, as long as this hand hasn't used its double yet
+  // Split hands get their own fresh right (tracked per hand via hand.doubleUsed)
+  return !hand.doubleUsed;
+}
+
+/* ═══════════════════════════════════════════════
+   GAME START / ROUND / PASS
+═══════════════════════════════════════════════ */
+function startGame() {
+  // Read inputs
+  const dIn = document.getElementById('dealerInput');
+  const dealerName = dIn.value.trim() || 'Dealer';
+  const pInputs = document.querySelectorAll('#playerRows input');
+  const playerNames = [...pInputs].map((el, i) => el.value.trim() || `Player ${i+1}`);
+
+  G = {
+    dealerName,
+    players: playerNames.map(name => ({ name, score: 0 })),
+    handDist: distributeHands(playerNames.length),
+    round: 0,
+    dealerScore: 0,
+  };
+
+  startRound();
+}
+
+function startRound() {
+  G.round++;
+  G.deck = buildDeck();
+  G.pass = 0;
+
+  // Build slot ownership: 6 slots assigned to players
+  // e.g. 2 players [3,3]: slots 0,1,2 → P0; 3,4,5 → P1
+  G.slots = []; // {playerIndex, eliminated: false, doubledGame: false}
+  let si = 0;
+  G.players.forEach((_, pi) => {
+    for (let h = 0; h < G.handDist[pi]; h++) {
+      G.slots.push({ playerIndex: pi, eliminated: false, doubledGame: false });
+      si++;
+    }
+  });
+
+  G.dealerHand = [];
+  G.hands = []; // current pass hands
+  G.phase = 'dealing';
+  G.activeHand = -1;
+  G.passResult = null;
+
+  showScreen('game');
+  updateTopBar();
+  startPass();
+}
+
+function startPass() {
+  G.pass++;
+  G.dealerHand = [];
+  G.hands = [];
+  G.phase = 'player-turns';
+  G.activeHand = -1;
+  G.passResult = null;
+  clearBottomBar();
+
+  // Deal 2 cards to each active slot
+  const activeSlots = G.slots.filter(s => !s.eliminated);
+  if (activeSlots.length === 0) {
+    // All eliminated — dealer wins
+    endRound(false);
+    return;
+  }
+
+  // Assign hands to active slots
+  activeSlots.forEach((slot, i) => {
+    const c1 = draw(), c2 = draw();
+    if (!c1 || !c2) return; // deck ran out mid-deal — handled below
+    G.hands.push({
+      slotIndex: G.slots.indexOf(slot),
+      playerIndex: slot.playerIndex,
+      cards: [c1, c2],
+      status: 'active', // active | stand | bust | blackjack | elim
+      doubled: false,
+      doubleUsed: slot.doubledGame, // carries over game-level double usage
+      isSplitHand: false,
+      splitFrom: null,
+      result: null, // win | lose | push | bj | bust (set after dealer resolve)
+    });
+  });
+
+  // Dealer: 1 up, 1 down
+  const dc1 = draw(), dc2 = draw();
+  if (dc1) G.dealerHand.push(dc1);
+  if (dc2) { dc2.down = true; G.dealerHand.push(dc2); }
+
+  // Check deck ran out during deal
+  if (!dc1 || !dc2 || G.hands.some(h => h.cards.length < 2)) {
+    triggerShowdown();
+    return;
+  }
+
+  // Process opening burns
+  for (const hand of G.hands) {
+    if (isBlackjack(hand.cards)) {
+      hand.status = 'blackjack';
+      for (let i = 0; i < 3; i++) { const bc = burn(); if (bc) hand.cards.push(bc); }
+    } else if (isSixSeven(hand.cards)) {
+      const bc = burn(); if (bc) hand.cards.push(bc);
+    }
+    if (isKingNine(hand.cards)) {
+      setTimeout(() => toast(`🐕 ${G.players[hand.playerIndex].name}: BARK BARK BARK!`), 300);
+    }
+  }
+
+  updateTopBar();
+  setPhaseStrip('Player Turns');
+
+  // Find first active hand
+  G.activeHand = G.hands.findIndex(h => h.status === 'active');
+  if (G.activeHand === -1) {
+    // All blackjacks / no active hands
+    G.activeHand = -1;
+    setPhaseStrip('All Hands Done — Dealer Turn');
+    renderGame();
+    showBottomNext('Dealer Turn →', dealerTurn);
+    return;
+  }
+
+  renderGame();
+  updateDeckDisplay();
+}
+
+/* ═══════════════════════════════════════════════
+   PLAYER ACTIONS
+═══════════════════════════════════════════════ */
+function hit(hi) {
+  const hand = G.hands[hi];
+  if (hand.status !== 'active') return;
+  const c = draw();
+  if (!c) { triggerShowdown(); return; }
+  c._isNew = true;
+  hand.cards.push(c);
+  const val = handTotal(hand.cards);
+  if (val > 21) { hand.status = 'bust'; }
+  else if (val === 21) { hand.status = 'stand'; }
+  updateDeckDisplay();
+  renderGame();
+  if (hand.status !== 'active') advanceHand(hi);
+}
+
+function stand(hi) {
+  G.hands[hi].status = 'stand';
+  renderGame();
+  advanceHand(hi);
+}
+
+function doDouble(hi) {
+  const hand = G.hands[hi];
+  if (!canDouble(hand)) return;
+  hand.doubled = true;
+  hand.doubleUsed = true;
+  // Mark the slot so future passes on this same slot can't double
+  // (split hands are separate — they get their own fresh right)
+  if (!hand.isSplitHand) {
+    G.slots[hand.slotIndex].doubledGame = true;
+  }
+  const c = draw(); if (c) hand.cards.push(c);
+  const bc = burn(); if (bc) hand.cards.push(bc);
+  const val = handTotal(hand.cards.filter(x => !x.burned));
+  hand.status = val > 21 ? 'bust' : 'stand';
+  updateDeckDisplay();
+  renderGame();
+  advanceHand(hi);
+}
+
+function doSplit(hi) {
+  const hand = G.hands[hi];
+  if (!canSplit(hand)) return;
+  const c1 = hand.cards[0], c2 = hand.cards[1];
+  const n1 = draw(), n2 = draw();
+
+  hand.cards = [c1];
+  if (n1) hand.cards.push(n1);
+  hand.splitFrom = hi;
+  hand.isSplitHand = true;
+  hand.doubled = false;
+  hand.doubleUsed = false; // split hand gets its own fresh double right
+  hand.status = 'active';
+
+  const newHand = {
+    slotIndex: hand.slotIndex,
+    playerIndex: hand.playerIndex,
+    cards: [c2],
+    status: 'active',
+    doubled: false,
+    doubleUsed: false, // fresh double right for this split hand
+    isSplitHand: true,
+    splitFrom: hi,
+    result: null,
+  };
+  if (n2) newHand.cards.push(n2);
+
+  G.hands.splice(hi + 1, 0, newHand);
+
+  // Check new hands for blackjack / burns
+  for (const h of [hand, newHand]) {
+    if (isBlackjack(h.cards)) {
+      h.status = 'blackjack';
+      for (let i=0;i<3;i++) { const bc=burn(); if(bc) h.cards.push(bc); }
+    }
+  }
+
+  updateDeckDisplay();
+  G.activeHand = hi; // re-check from here
+  renderGame();
+  if (hand.status !== 'active') advanceHand(hi);
+}
+
+function advanceHand(fromHi) {
+  if (G.deck.length === 0) { triggerShowdown(); return; }
+  // Search from beginning each time to catch split hands inserted at any position
+  const next = G.hands.findIndex((h, i) => h.status === 'active');
+  if (next === -1) {
+    // All hands resolved
+    G.activeHand = -1;
+    setPhaseStrip('All Hands Done — Dealer Turn');
+    clearBottomBar();
+    renderGame();
+    showBottomNext('Dealer Turn →', dealerTurn);
+  } else {
+    G.activeHand = next;
+    clearBottomBar(); // no next-pass button while hands are still active
+    renderGame();
+    setTimeout(() => {
+      const el = document.querySelector('.hand-card.is-active');
+      if (el) el.scrollIntoView({behavior:'smooth', block:'nearest'});
+    }, 100);
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   DEALER TURN
+═══════════════════════════════════════════════ */
+function dealerTurn() {
+  // Flip hole card with animation flag
+  if (G.dealerHand[1]) {
+    G.dealerHand[1].down = false;
+    G.dealerHand[1]._flip = true;
+  }
+  G.phase = 'dealer-turn';
+  setPhaseStrip('Dealer Turn');
+  renderGame();
+  showBottomNext('Dealer Plays →', dealerDraw);
+}
+
+function dealerDraw() {
+  const val = handTotal(G.dealerHand);
+  if (val < 17) {
+    const c = draw();
+    if (!c) { triggerShowdown(); return; }
+    c._isNew = true;
+    G.dealerHand.push(c);
+    updateDeckDisplay();
+    renderGame();
+    const newVal = handTotal(G.dealerHand);
+    if (newVal < 17) {
+      showBottomNext('Dealer Draws →', dealerDraw);
+    } else {
+      showBottomNext('Resolve →', resolveHands);
+    }
+  } else {
+    resolveHands();
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   SHOWDOWN (deck exhausted mid-hand)
+═══════════════════════════════════════════════ */
+function triggerShowdown() {
+  G.dealerHand.forEach(c => { c.down = false; if (!c._flip) c._flip = true; });
+  G.phase = 'showdown';
+  setPhaseStrip('🔥 END-OF-DECK SHOWDOWN');
+  toast('🔥 Deck exhausted — SHOWDOWN!');
+  // Render first so players can see all cards, then show next button to resolve
+  renderGame();
+  showBottomNext('🔥 Reveal Results →', () => resolveHands(true));
+}
+
+/* ═══════════════════════════════════════════════
+   RESOLVE HANDS
+═══════════════════════════════════════════════ */
+function resolveHands(isShowdown = false) {
+  const dval = handTotal(G.dealerHand);
+  const dBust = dval > 21;
+
+  // Mark each hand result — push counts as a WIN for players
+  for (const hand of G.hands) {
+    if (hand.status === 'blackjack') {
+      hand.result = 'win-bj';
+    } else if (hand.status === 'bust') {
+      hand.result = 'lose';
+    } else {
+      const hv = handTotal(hand.cards.filter(c => !c.burned));
+      if (dBust) {
+        hand.result = 'win';
+      } else if (hv > dval) {
+        hand.result = 'win';
+      } else if (hv === dval) {
+        hand.result = 'push'; // treated as win for survival
+      } else {
+        hand.result = 'lose';
+      }
+    }
+  }
+
+  // Determine slot survival: win, push, or blackjack = survives; lose = check siblings
+  const slotGroups = {};
+  G.hands.forEach(h => {
+    if (!slotGroups[h.slotIndex]) slotGroups[h.slotIndex] = [];
+    slotGroups[h.slotIndex].push(h);
+  });
+  Object.entries(slotGroups).forEach(([si, hs]) => {
+    // Push now counts as surviving (same as win)
+    const survives = hs.some(h => h.result === 'win' || h.result === 'win-bj' || h.result === 'push');
+    G.slots[+si].eliminated = !survives;
+  });
+
+  G.phase = 'resolved';
+  setPhaseStrip('Pass Complete');
+  renderGame();
+
+  // Showdown: any player wins OR pushes = all players win — show next button
+  if (isShowdown) {
+    const anyWin = G.hands.some(h => h.result === 'win' || h.result === 'win-bj' || h.result === 'push');
+    G._pendingWin = anyWin;
+    const label = anyWin ? '🔥 Players Win — See Scores' : '💀 Dealer Wins — See Scores';
+    showBottomNext(label, () => endRound(G._pendingWin, true));
+    return;
+  }
+
+  // Check round-end conditions
+  const activeLeft = G.slots.filter(s => !s.eliminated).length;
+  const deckEmpty = G.deck.length === 0;
+
+  if (deckEmpty && activeLeft > 0) {
+    showBottomNext('🔥 Players Win — See Scores', () => endRound(true));
+    return;
+  }
+  if (activeLeft === 0) {
+    showBottomNext('💀 Dealer Wins — See Scores', () => endRound(false));
+    return;
+  }
+
+  // Check if enough cards remain for next pass
+  const activeCount = G.slots.filter(s => !s.eliminated).length;
+  const cardsNeeded = (activeCount + 1) * 2;
+  if (G.deck.length < cardsNeeded) {
+    toast(`🔥 Only ${G.deck.length} cards left — Players win automatically!`);
+    showBottomNext('🔥 Players Win — See Scores', () => endRound(true));
+    return;
+  }
+
+  // More passes possible
+  showBottomNext(`Next Pass (${G.deck.length} cards left) →`, startPass);
+}
+
+/* ═══════════════════════════════════════════════
+   END ROUND
+═══════════════════════════════════════════════ */
+function endRound(playersWin, showdown = false) {
+  const cardsLeft = G.deck.length;
+
+  if (playersWin) {
+    // Players win: flat 52 points each, no bonus
+    G.players.forEach(p => p.score += 52);
+    G._lastRoundBonus = 0;
+  } else {
+    // Dealer gets cards remaining
+    G.dealerScore = (G.dealerScore || 0) + cardsLeft;
+    G._lastRoundBonus = 0;
+  }
+
+  showResultScreen(playersWin, cardsLeft, showdown);
+}
+
+function showResultScreen(playersWin, cardsLeft, showdown) {
+  showScreen('result');
+
+  document.getElementById('resultHeadline').textContent = playersWin ? '🔥 PLAYERS WIN!' : '💀 DEALER WINS';
+  document.getElementById('resultHeadline').className = 'result-headline ' + (playersWin ? 'rh-win' : 'rh-lose');
+
+  let sub = playersWin
+    ? (showdown ? 'Showdown victory — deck exhausted' : 'Deck exhausted — team survives!')
+    : 'All hands eliminated before deck ran out';
+  document.getElementById('resultSub').textContent = sub;
+
+  // Round scores
+  const rs = document.getElementById('roundScores');
+  rs.innerHTML = '';
+  const bonus = G._lastRoundBonus || 0;
+  const dealerPts = playersWin ? 0 : cardsLeft;
+
+  rs.innerHTML += scoreRow(G.dealerName + ' 🔥', dealerPts, !playersWin);
+  G.players.forEach(p => {
+    const pts = playersWin ? 52 : 0;
+    rs.innerHTML += scoreRow(p.name, pts, playersWin);
+  });
+
+  // Total
+  const ts = document.getElementById('totalScoresEl');
+  ts.innerHTML = '';
+  const allPlayers = [
+    { name: G.dealerName + ' 🔥', score: G.dealerScore || 0 },
+    ...G.players
+  ].sort((a,b) => b.score - a.score);
+  allPlayers.forEach(p => {
+    ts.innerHTML += scoreRow(p.name, p.score, true);
+  });
+}
+
+function scoreRow(name, pts, highlight) {
+  return `<div class="score-row">
+    <span>${name}</span>
+    <span class="sr-pts ${highlight && pts > 0 ? 'green' : pts===0 ? 'gray' : ''}">${pts > 0 ? '+' : ''}${pts}</span>
+  </div>`;
+}
+
+function nextRound() {
+  startRound();
+}
+function goSetup() {
+  showScreen('setup');
+}
+
+/* ═══════════════════════════════════════════════
+   RENDER
+═══════════════════════════════════════════════ */
+function renderGame() {
+  renderDealer();
+  renderHands();
+  renderActionButtons();
+}
+
+function renderDealer() {
+  const row = document.getElementById('dealerRow');
+  row.innerHTML = '';
+  for (const c of G.dealerHand) row.appendChild(mkCard(c, {isNew: c._isNew}));
+  // Value
+  const vis = G.dealerHand.filter(c => !c.down && !c.burned);
+  if (vis.length) {
+    const val = handTotal(vis);
+    const sp = document.createElement('span');
+    sp.className = 'dealer-val';
+    sp.textContent = val > 21 ? 'BUST' : val;
+    row.appendChild(sp);
+  }
+  // Clear isNew flags after render
+  G.dealerHand.forEach(c => c._isNew = false);
+}
+
+function renderHands() {
+  const area = document.getElementById('scrollArea');
+  area.innerHTML = '';
+
+  // Assign stable global hand numbers to all hands (in array order)
+  // Each hand gets a unique display number 1..N regardless of player/splits
+  G.hands.forEach((hand, hi) => {
+    if (hand._displayNum === undefined) hand._displayNum = hi + 1;
+  });
+  // Re-number sequentially in case splits shifted things
+  G.hands.forEach((hand, hi) => { hand._displayNum = hi + 1; });
+
+  G.hands.forEach((hand, hi) => {
+    const playerName = G.players[hand.playerIndex].name;
+    const isActive = hi === G.activeHand && hand.status === 'active';
+    const card = document.createElement('div');
+
+    let cls = 'hand-card';
+    if (isActive) cls += ' is-active';
+    else if (hand.status === 'bust') cls += ' is-bust';
+    else if (hand.status === 'blackjack') cls += ' is-bj';
+    else if (hand.status === 'stand') cls += ' is-stand';
+    else if (hand.result === 'win' || hand.result === 'win-bj') cls += ' is-winner';
+    else if (G.slots[hand.slotIndex]?.eliminated) cls += ' is-elim';
+    card.className = cls;
+
+    const isSplit = hand.isSplitHand;
+    const showDoubleIcon = hand.doubleUsed;
+
+    let statusHtml = '';
+    if (hand.result) {
+      const rmap = {'win':'WIN','win-bj':'BLACKJACK WIN','lose':'LOST','push':'PUSH (WIN)'};
+      const rcls = {'win':'s-win','win-bj':'s-bj','lose':'s-lose','push':'s-win'}[hand.result] || 's-active';
+      statusHtml = `<span class="hc-status ${rcls}">${rmap[hand.result]}</span>`;
+    } else {
+      const scls = {active:'s-active',stand:'s-stand',bust:'s-bust',blackjack:'s-bj'}[hand.status] || 's-active';
+      const slbl = {active: isActive ? 'YOUR TURN':'WAITING', stand:'STAND',bust:'BUST',blackjack:'BLACKJACK!'}[hand.status] || hand.status.toUpperCase();
+      statusHtml = `<span class="hc-status ${scls}">${slbl}</span>`;
+    }
+
+    const vis = hand.cards.filter(c => !c.burned);
+    const val = handTotal(vis);
+    const valCls = val > 21 ? 'v-bust' : hand.status==='blackjack'||val===21 ? 'v-bj' : val>=17 ? 'v-high' : 'v-ok';
+    const valStr = hand.status === 'blackjack' ? '21★' : (val > 21 ? 'BUST' : val);
+
+    card.innerHTML = `
+      ${isSplit ? '<div class="split-label">✂️ Split</div>' : ''}
+      <div class="hc-top">
+        <div class="hc-name">
+          <span class="hc-hand-num" style="background:rgba(255,100,0,0.12);color:var(--fire2);border:1px solid rgba(255,100,0,0.25);font-size:11px;padding:2px 7px;border-radius:4px;letter-spacing:1px">#${hand._displayNum}</span>
+          ${playerName}
+          ${showDoubleIcon ? `<span title="Double used" style="font-size:12px;opacity:0.7">🚫✌️</span>` : ''}
+        </div>
+        ${statusHtml}
+      </div>
+      <div class="hc-body">
+        <div class="cards-wrap" id="cards-${hi}"></div>
+        <div class="hc-val ${valCls}">${valStr}</div>
+      </div>
+      ${isActive ? `<div class="hc-actions" id="acts-${hi}"></div>` : ''}
+    `;
+
+    area.appendChild(card);
+
+    // Cards — last card gets isNew if flagged
+    const cw = document.getElementById(`cards-${hi}`);
+    hand.cards.forEach((c, ci) => {
+      const isLast = ci === hand.cards.length - 1;
+      cw.appendChild(mkCard(c, {isNew: isLast && c._isNew}));
+    });
+    // Clear isNew flags after render
+    hand.cards.forEach(c => c._isNew = false);
+
+    // Actions
+    if (isActive) {
+      const aw = document.getElementById(`acts-${hi}`);
+      aw.innerHTML = `
+        <button class="btn btn-fire btn-sm" onclick="hit(${hi})">HIT</button>
+        <button class="btn btn-gold btn-sm" onclick="stand(${hi})">STAND</button>
+        ${canDouble(hand) ? `<button class="btn btn-green btn-sm" onclick="doDouble(${hi})">DOUBLE</button>` : ''}
+        ${canSplit(hand) ? `<button class="btn btn-blue btn-sm" onclick="doSplit(${hi})">SPLIT</button>` : ''}
+      `;
+    }
+  });
+
+  // Eliminated slots footer note
+  const elimCount = G.slots.filter(s => s.eliminated).length;
+  if (elimCount > 0 && G.phase !== 'resolved') {
+    const note = document.createElement('div');
+    note.style.cssText = 'text-align:center;font-size:12px;color:var(--muted);letter-spacing:2px;padding:6px 0 12px';
+    note.textContent = `${elimCount} of ${G.slots.length} slot${elimCount>1?'s':''} eliminated`;
+    area.appendChild(note);
+  }
+}
+
+function renderActionButtons() {
+  // Bottom bar is managed by showBottomNext; only fill if in player-turns with no active
+  const bar = document.getElementById('bottomBar');
+  // Don't overwrite if already has a NEXT button
+}
+
+function showBottomNext(label, fn) {
+  const bar = document.getElementById('bottomBar');
+  bar.innerHTML = `<button class="btn btn-fire btn-lg btn-full" onclick="(${fn.toString()})()">${label}</button>`;
+}
+
+function clearBottomBar() {
+  document.getElementById('bottomBar').innerHTML = '';
+}
+
+/* ═══════════════════════════════════════════════
+   CARD ELEMENT
+═══════════════════════════════════════════════ */
+function mkCard(c, opts = {}) {
+  if (c.burned) {
+    const d = document.createElement('div');
+    d.className = 'card card-burned' + (opts.isNew ? ' card-new' : '');
+    return d;
+  }
+  if (c.down) {
+    const d = document.createElement('div');
+    d.className = 'card card-down';
+    return d;
+  }
+  // Cards marked _flip get a 3D flip reveal (used when dealer hole card flips)
+  if (c._flip) {
+    const container = document.createElement('div');
+    container.className = 'card-flip-container';
+    const inner = document.createElement('div');
+    inner.className = 'card-flip-inner';
+    const back = document.createElement('div');
+    back.className = 'card-flip-back';
+    const front = document.createElement('div');
+    front.className = `card-flip-front ${isRed(c) ? 'red' : 'blk'}`;
+    front.innerHTML = `<div class="cv">${c.v}</div><div class="cs">${c.s}</div>`;
+    inner.appendChild(back);
+    inner.appendChild(front);
+    container.appendChild(inner);
+    setTimeout(() => container.classList.add('flipped'), 60);
+    c._flip = false;
+    return container;
+  }
+  const d = document.createElement('div');
+  d.className = `card card-live ${isRed(c) ? 'red' : 'blk'}` + (opts.isNew ? ' card-new' : '');
+  d.innerHTML = `<div class="cv">${c.v}</div><div class="cs">${c.s}</div>`;
+  return d;
+}
+
+/* ═══════════════════════════════════════════════
+   UI HELPERS
+═══════════════════════════════════════════════ */
+function updateTopBar() {
+  document.getElementById('topRound').textContent = `ROUND ${G.round}`;
+  document.getElementById('topPass').textContent = `PASS ${G.pass || 1}`;
+  document.getElementById('topDealer').textContent = `🔥 ${G.dealerName}`;
+  updateDeckDisplay();
+}
+function updateDeckDisplay() {
+  const el = document.getElementById('topDeck');
+  el.textContent = G.deck.length;
+  el.className = 'top-deck' + (G.deck.length <= 10 ? ' deck-low' : '');
+}
+function setPhaseStrip(txt) {
+  document.getElementById('phaseStrip').textContent = txt;
+  if (G.pass) document.getElementById('topPass').textContent = `PASS ${G.pass}`;
+}
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._t);
+  t._t = setTimeout(() => t.classList.remove('show'), 2800);
+}
+function openScores() {
+  const list = document.getElementById('modalScoresList');
+  list.innerHTML = '';
+  const all = [
+    { name: (G.dealerName || 'Dealer') + ' 🔥', score: G.dealerScore || 0 },
+    ...(G.players || [])
+  ].sort((a,b) => b.score - a.score);
+  all.forEach((p, i) => {
+    const medal = ['🥇','🥈','🥉'][i] || '  ';
+    list.innerHTML += `<div class="score-row">
+      <span>${medal} ${p.name}</span>
+      <span class="sr-pts">${p.score}</span>
+    </div>`;
+  });
+  document.getElementById('scoresOverlay').classList.add('open');
+}
+function closeScores() {
+  document.getElementById('scoresOverlay').classList.remove('open');
+}
+
+/* ═══════════════════════════════════════════════
+   BOOT
+═══════════════════════════════════════════════ */
+initSetup();
+</script>
+</body>
+</html>
