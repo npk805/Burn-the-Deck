@@ -7,6 +7,63 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Burn the Deck">
 <title>🔥 BURN THE DECK</title>
+<script>
+// Generate apple-touch-icon dynamically using canvas
+(function() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 180; canvas.height = 180;
+  const ctx = canvas.getContext('2d');
+  // Background — dark with fire gradient
+  const grad = ctx.createLinearGradient(0, 0, 180, 180);
+  grad.addColorStop(0, '#1a0800');
+  grad.addColorStop(1, '#0a0a0a');
+  ctx.fillStyle = grad;
+  // Rounded rect
+  const r = 38;
+  ctx.beginPath();
+  ctx.moveTo(r, 0); ctx.lineTo(180-r, 0);
+  ctx.quadraticCurveTo(180, 0, 180, r);
+  ctx.lineTo(180, 180-r);
+  ctx.quadraticCurveTo(180, 180, 180-r, 180);
+  ctx.lineTo(r, 180);
+  ctx.quadraticCurveTo(0, 180, 0, 180-r);
+  ctx.lineTo(0, r);
+  ctx.quadraticCurveTo(0, 0, r, 0);
+  ctx.closePath();
+  ctx.fill();
+  // Fire glow
+  const glow = ctx.createRadialGradient(90, 110, 10, 90, 110, 80);
+  glow.addColorStop(0, 'rgba(255,100,0,0.35)');
+  glow.addColorStop(1, 'rgba(255,100,0,0)');
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.moveTo(r, 0); ctx.lineTo(180-r, 0);
+  ctx.quadraticCurveTo(180, 0, 180, r);
+  ctx.lineTo(180, 180-r);
+  ctx.quadraticCurveTo(180, 180, 180-r, 180);
+  ctx.lineTo(r, 180);
+  ctx.quadraticCurveTo(0, 180, 0, 180-r);
+  ctx.lineTo(0, r);
+  ctx.quadraticCurveTo(0, 0, r, 0);
+  ctx.closePath();
+  ctx.fill();
+  // 🔥 emoji
+  ctx.font = '90px serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('🔥', 90, 88);
+  // "BTD" text below
+  ctx.font = 'bold 28px Arial';
+  ctx.fillStyle = '#ff6d00';
+  ctx.letterSpacing = '3px';
+  ctx.fillText('BTD', 90, 152);
+
+  const link = document.createElement('link');
+  link.rel = 'apple-touch-icon';
+  link.href = canvas.toDataURL('image/png');
+  document.head.appendChild(link);
+})();
+</script>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Crimson+Pro:wght@400;600;700&family=Oswald:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 :root {
