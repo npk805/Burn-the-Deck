@@ -676,6 +676,62 @@ html, body {
 
 /* low deck warning */
 .deck-low { color: #e74c3c !important; }
+
+.home-btn {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: var(--r-sm);
+  color: var(--muted);
+  font-size: 18px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+  line-height: 1;
+}
+.home-btn:active { transform: scale(0.92); background: rgba(255,255,255,0.08); }
+.hand-mode-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.hand-mode-btn {
+  background: var(--bg3);
+  border: 2px solid rgba(255,100,0,0.18);
+  border-radius: var(--r-sm);
+  color: var(--muted);
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 22px;
+  letter-spacing: 1px;
+  padding: 12px 6px 8px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  -webkit-appearance: none;
+}
+.hand-mode-btn span {
+  font-family: 'Oswald', sans-serif;
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.hand-mode-btn:active { transform: scale(0.95); }
+.hand-mode-btn.selected {
+  border-color: var(--fire2);
+  background: rgba(255,109,0,0.12);
+  color: var(--fire2);
+  box-shadow: 0 0 12px rgba(255,109,0,0.2);
+}
+.hand-mode-btn.selected span { color: var(--fire2); }
 </style>
 </head>
 <body>
@@ -697,7 +753,13 @@ html, body {
   </div>
 
   <div class="setup-panel">
-    <h3>Players <span style="font-size:13px;color:var(--muted);letter-spacing:1px">(2–6 · total 6 hands)</span></h3>
+    <h3>🃏 Hands Per Round</h3>
+    <div class="hand-mode-grid" id="handModeGrid"></div>
+    <div class="hands-note" id="handModeNote"></div>
+  </div>
+
+  <div class="setup-panel">
+    <h3>Players <span style="font-size:13px;color:var(--muted);letter-spacing:1px" id="playerPanelSub"></span></h3>
     <div id="playerRows"></div>
     <div class="add-remove-row">
       <button class="btn btn-outline btn-sm" onclick="addPlayer()">+ Add Player</button>
@@ -725,6 +787,7 @@ html, body {
     </div>
     <div class="top-right">
       <button class="scores-btn" onclick="openScores()">SCORES</button>
+      <button class="home-btn" onclick="confirmHome()">⌂</button>
     </div>
   </div>
 
@@ -772,6 +835,21 @@ html, body {
   </div>
 </div>
 
+<!-- ═══ HOME CONFIRM MODAL ═══ -->
+<div class="overlay" id="homeConfirmOverlay">
+  <div class="modal" style="text-align:center">
+    <div style="font-size:32px;margin-bottom:8px">⌂</div>
+    <h2 style="margin-bottom:6px">Quit Game?</h2>
+    <p style="font-size:13px;color:var(--muted);letter-spacing:1px;margin-bottom:20px;line-height:1.5">
+      You'll lose all current round progress.<br>Scores from completed rounds are saved.
+    </p>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <button class="btn btn-danger btn-md btn-full" onclick="confirmHomeYes()">Yes, go home</button>
+      <button class="btn btn-ghost btn-md btn-full" onclick="confirmHomeNo()">Keep playing</button>
+    </div>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
@@ -786,9 +864,39 @@ let G = {}; // game state
 
 // Setup players state
 let setupPlayers = ['Player 1'];
+let selectedHandCount = 6; // default 6 hands
 
 function initSetup() {
+  renderHandModeGrid();
   renderSetupRows();
+}
+
+function renderHandModeGrid() {
+  const grid = document.getElementById('handModeGrid');
+  grid.innerHTML = '';
+  const options = [3, 4, 5, 6];
+  const labels = { 3: 'NIGHTMARE', 4: 'HARD', 5: 'MEDIUM', 6: 'EASY' };
+  options.forEach(n => {
+    const btn = document.createElement('button');
+    btn.className = 'hand-mode-btn' + (n === selectedHandCount ? ' selected' : '');
+    btn.innerHTML = `${n}<span>${labels[n]}</span>`;
+    btn.onclick = () => {
+      selectedHandCount = n;
+      // Enforce player count doesn't exceed hand count
+      while (setupPlayers.length > n) setupPlayers.pop();
+      renderHandModeGrid();
+      renderSetupRows();
+    };
+    grid.appendChild(btn);
+  });
+  const note = document.getElementById('handModeNote');
+  const descriptions = {
+    3: '💀 NIGHTMARE — barely any room to survive',
+    4: '🔥 HARD — one mistake can end it all',
+    5: '⚡ MEDIUM — challenging but beatable',
+    6: '😎 EASY — the full deck is on your side'
+  };
+  note.textContent = descriptions[selectedHandCount];
 }
 
 function renderSetupRows() {
@@ -806,19 +914,21 @@ function renderSetupRows() {
     `;
     cont.appendChild(div);
   });
+  const sub = document.getElementById('playerPanelSub');
+  if (sub) sub.textContent = `(1–${selectedHandCount} players · ${selectedHandCount} hands total)`;
   document.getElementById('handsNote').textContent =
-    `${setupPlayers.length} players · 6 hands total · ${handDist.join('+')} hands each`;
+    `${setupPlayers.length} player${setupPlayers.length>1?'s':''} · ${selectedHandCount} hands · ${handDist.join('+')} each`;
 }
 
 function distributeHands(n) {
-  // Distribute 6 hands as evenly as possible
-  const base = Math.floor(6 / n);
-  const extra = 6 % n;
+  const total = selectedHandCount;
+  const base = Math.floor(total / n);
+  const extra = total % n;
   return Array.from({length: n}, (_, i) => base + (i < extra ? 1 : 0));
 }
 
 function addPlayer() {
-  if (setupPlayers.length >= 6) { toast('Max 6 players!'); return; }
+  if (setupPlayers.length >= selectedHandCount) { toast(`Max ${selectedHandCount} players for ${selectedHandCount} hands!`); return; }
   setupPlayers.push(`Player ${setupPlayers.length + 1}`);
   renderSetupRows();
 }
@@ -920,6 +1030,7 @@ function startGame() {
     dealerName,
     players: playerNames.map(name => ({ name, score: 0 })),
     handDist: distributeHands(playerNames.length),
+    totalHands: selectedHandCount,
     round: 0,
     dealerScore: 0,
   };
@@ -942,6 +1053,8 @@ function startRound() {
       si++;
     }
   });
+  // Verify total slots matches totalHands
+  // (handDist is already computed correctly via distributeHands)
 
   G.dealerHand = [];
   G.hands = []; // current pass hands
@@ -1510,7 +1623,7 @@ function mkCard(c, opts = {}) {
    UI HELPERS
 ═══════════════════════════════════════════════ */
 function updateTopBar() {
-  document.getElementById('topRound').textContent = `ROUND ${G.round}`;
+  document.getElementById('topRound').textContent = `ROUND ${G.round} · ${G.totalHands} HANDS`;
   document.getElementById('topPass').textContent = `PASS ${G.pass || 1}`;
   document.getElementById('topDealer').textContent = `🔥 ${G.dealerName}`;
   updateDeckDisplay();
@@ -1535,6 +1648,18 @@ function toast(msg) {
   clearTimeout(t._t);
   t._t = setTimeout(() => t.classList.remove('show'), 2800);
 }
+function confirmHome() {
+  document.getElementById('homeConfirmOverlay').classList.add('open');
+}
+function confirmHomeYes() {
+  document.getElementById('homeConfirmOverlay').classList.remove('open');
+  showScreen('setup');
+  initSetup();
+}
+function confirmHomeNo() {
+  document.getElementById('homeConfirmOverlay').classList.remove('open');
+}
+
 function openScores() {
   const list = document.getElementById('modalScoresList');
   list.innerHTML = '';
