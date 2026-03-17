@@ -1628,22 +1628,18 @@ function endRound(playersWin, showdown = false) {
   else G.dealerWins = (G.dealerWins || 0) + 1;
 
   if (G.players.length === 1) {
-    // Solo: no rotating dealer, old logic
     if (playersWin) {
-      G.players[0].score += 52;
+      G.players[0].score += (G.roundBurnt[0] || 0);
     }
-    // No dealer score tracking needed for solo
   } else {
     if (playersWin) {
-      // Non-dealer players each get 52
+      // Each non-dealer player earns points equal to their own cards burnt this round
       G.players.forEach((p, pi) => {
-        if (pi !== G.dealerPlayerIndex) p.score += 52;
+        if (pi !== G.dealerPlayerIndex) p.score += (G.roundBurnt[pi] || 0);
       });
-      // Dealer gets 0 (lost)
     } else {
       // Dealer wins: dealer player gets cards remaining
       G.players[G.dealerPlayerIndex].score += cardsLeft;
-      // Non-dealers get 0
     }
   }
 
@@ -1681,13 +1677,14 @@ function showResultScreen(playersWin, cardsLeft, showdown) {
   const rs = document.getElementById('roundScores');
   rs.innerHTML = '';
   if (solo) {
-    rs.innerHTML += scoreRow('Players', playersWin ? 52 : 0, playersWin);
+    const pts = playersWin ? (G.roundBurnt[0] || 0) : 0;
+    rs.innerHTML += scoreRow('Players', pts, playersWin);
   } else {
     G.players.forEach((p, pi) => {
       const isDealer = pi === G.dealerPlayerIndex;
       let pts = 0;
       if (isDealer && !playersWin) pts = cardsLeft;
-      if (!isDealer && playersWin) pts = 52;
+      if (!isDealer && playersWin) pts = G.roundBurnt[pi] || 0;
       rs.innerHTML += scoreRow(p.name + (isDealer ? ' 🔥' : ''), pts, pts > 0);
     });
   }
