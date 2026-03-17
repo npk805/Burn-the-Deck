@@ -888,6 +888,11 @@ html, body {
     <div id="totalScoresEl"></div>
   </div>
 
+  <div class="result-panel" id="winRecordPanel" style="display:none">
+    <h3>🏆 Win Record</h3>
+    <div id="winRecordEl"></div>
+  </div>
+
   <div class="result-panel" id="burntPanel">
     <h3>🔥 Cards Burnt This Round</h3>
     <div id="roundBurntEl"></div>
@@ -1201,6 +1206,8 @@ function startGame() {
     players: playerNames.map(name => ({ name, score: 0, cardsTotal: 0 })),
     totalHands: selectedHandCount,
     round: 0,
+    playerWins: 0,
+    dealerWins: 0,
   };
 
   // handDist is computed per-round based on who is NOT the dealer
@@ -1509,7 +1516,7 @@ function resolveHands(isShowdown = false) {
   const dval = handTotal(G.dealerHand);
   const dBust = dval > 21;
 
-  // Mark each hand result — push counts as a WIN for players
+  // Mark each hand result
   for (const hand of G.hands) {
     if (hand.status === 'blackjack') {
       hand.result = 'win-bj';
@@ -1517,35 +1524,67 @@ function resolveHands(isShowdown = false) {
       hand.result = 'lose';
     } else {
       const hv = handTotal(hand.cards.filter(c => !c.burned));
-      if (dBust) {
-        hand.result = 'win';
-      } else if (hv > dval) {
-        hand.result = 'win';
-      } else if (hv === dval) {
-        hand.result = 'push'; // treated as win for survival
-      } else {
-        hand.result = 'lose';
-      }
+      if (dBust)          hand.result = 'win';
+      else if (hv > dval) hand.result = 'win';
+      else if (hv === dval) hand.result = 'push'; // push = survive
+      else                hand.result = 'lose';
     }
   }
 
-  // Determine slot survival: win, push, or blackjack = survives; lose = check siblings
+  // --- Split expansion ---
+  // Group hands by slotIndex
   const slotGroups = {};
   G.hands.forEach(h => {
     if (!slotGroups[h.slotIndex]) slotGroups[h.slotIndex] = [];
     slotGroups[h.slotIndex].push(h);
   });
-  Object.entries(slotGroups).forEach(([si, hs]) => {
-    // Push now counts as surviving (same as win)
-    const survives = hs.some(h => h.result === 'win' || h.result === 'win-bj' || h.result === 'push');
-    G.slots[+si].eliminated = !survives;
+
+  // Rebuild G.slots: for each original slot, replace with one slot per SURVIVING hand
+  // (non-split slots behave exactly as before: win=survive, lose=eliminated)
+  const newSlots = [];
+  // We need a stable mapping: old slotIndex → new slot indices
+  // Walk original slots in order
+  const oldSlots = [...G.slots];
+  oldSlots.forEach((oldSlot, oldSi) => {
+    const hands = slotGroups[oldSi] || [];
+    if (hands.length === 0) {
+      // Slot had no hand this pass (shouldn't happen, but keep eliminated)
+      newSlots.push({ ...oldSlot, eliminated: true });
+      return;
+    }
+    if (hands.length === 1) {
+      // Non-split: survive if win/push, eliminate if lose
+      const survives = hands[0].result === 'win' || hands[0].result === 'win-bj' || hands[0].result === 'push';
+      newSlots.push({ ...oldSlot, eliminated: !survives });
+    } else {
+      // Split hands: each surviving hand becomes its own slot
+      // Losing hands are dropped (eliminated)
+      let anyAdded = false;
+      hands.forEach(h => {
+        const survives = h.result === 'win' || h.result === 'win-bj' || h.result === 'push';
+        if (survives) {
+          newSlots.push({
+            playerIndex: oldSlot.playerIndex,
+            eliminated: false,
+            doubledGame: oldSlot.doubledGame, // preserve double state
+          });
+          anyAdded = true;
+        }
+      });
+      if (!anyAdded) {
+        // All split hands lost — slot eliminated
+        newSlots.push({ ...oldSlot, eliminated: true });
+      }
+    }
   });
+
+  G.slots = newSlots;
 
   G.phase = 'resolved';
   setPhaseStrip('Pass Complete');
   renderGame();
 
-  // Showdown: any player wins OR pushes = all players win — show next button
+  // Showdown
   if (isShowdown) {
     const anyWin = G.hands.some(h => h.result === 'win' || h.result === 'win-bj' || h.result === 'push');
     G._pendingWin = anyWin;
@@ -1567,16 +1606,14 @@ function resolveHands(isShowdown = false) {
     return;
   }
 
-  // Check if enough cards remain for next pass
-  const activeCount = G.slots.filter(s => !s.eliminated).length;
-  const cardsNeeded = (activeCount + 1) * 2;
+  // Check if enough cards for next pass
+  const cardsNeeded = (activeLeft + 1) * 2;
   if (G.deck.length < cardsNeeded) {
     toast(`🔥 Only ${G.deck.length} cards left — Players win automatically!`);
     showBottomNext('🔥 Players Win — See Scores', () => endRound(true));
     return;
   }
 
-  // More passes possible
   showBottomNext(`Next Pass (${G.deck.length} cards left) →`, startPass);
 }
 
@@ -1585,6 +1622,10 @@ function resolveHands(isShowdown = false) {
 ═══════════════════════════════════════════════ */
 function endRound(playersWin, showdown = false) {
   const cardsLeft = G.deck.length;
+
+  // Track round win counts
+  if (playersWin) G.playerWins = (G.playerWins || 0) + 1;
+  else G.dealerWins = (G.dealerWins || 0) + 1;
 
   if (G.players.length === 1) {
     // Solo: no rotating dealer, old logic
@@ -1687,6 +1728,32 @@ function showResultScreen(playersWin, cardsLeft, showdown) {
   });
 
   burntSessionPanel.style.display = G.round > 1 ? '' : 'none';
+
+  // Win record — show after round 1
+  const winRecordPanel = document.getElementById('winRecordPanel');
+  const winRecordEl = document.getElementById('winRecordEl');
+  winRecordPanel.style.display = '';
+  const totalRounds = (G.playerWins || 0) + (G.dealerWins || 0);
+  const pw = G.playerWins || 0;
+  const dw = G.dealerWins || 0;
+  const pPct = totalRounds > 0 ? Math.round(pw / totalRounds * 100) : 0;
+  const dPct = totalRounds > 0 ? Math.round(dw / totalRounds * 100) : 0;
+  winRecordEl.innerHTML = `
+    <div class="burnt-row">
+      <div class="burnt-top">
+        <span class="burnt-name">Players</span>
+        <span class="burnt-count">${pw} <span style="font-size:11px;color:var(--muted)">win${pw!==1?'s':''}</span><span class="burnt-pct">${pPct}%</span></span>
+      </div>
+      <div class="burnt-bar-wrap"><div class="burnt-bar" style="width:${pPct}%;background:linear-gradient(90deg,#00c853,#69f0ae)"></div></div>
+    </div>
+    <div class="burnt-row">
+      <div class="burnt-top">
+        <span class="burnt-name">Dealer 🔥</span>
+        <span class="burnt-count">${dw} <span style="font-size:11px;color:var(--muted)">win${dw!==1?'s':''}</span><span class="burnt-pct">${dPct}%</span></span>
+      </div>
+      <div class="burnt-bar-wrap"><div class="burnt-bar" style="width:${dPct}%;background:linear-gradient(90deg,var(--fire1),var(--fire3))"></div></div>
+    </div>
+  `;
 }
 
 function burntRow(name, count, pct, showBar) {
