@@ -166,7 +166,7 @@ html, body {
 .setup-panel {
   background:
     linear-gradient(180deg, rgba(255,180,60,0.04) 0%, transparent 100%),
-    var(--bg2);
+    rgba(18,10,6,0.78);
   border: 1px solid rgba(201,150,42,0.2);
   border-top: 2px solid rgba(201,150,42,0.35);
   border-radius: var(--r);
@@ -399,10 +399,7 @@ html, body {
    GAME SCREEN — CASINO TABLE
 ═══════════════════════════════════════════ */
 #game {
-  background:
-    radial-gradient(ellipse at 50% 0%, rgba(90,45,5,0.4) 0%, transparent 50%),
-    radial-gradient(ellipse at 0% 100%, rgba(255,61,0,0.04) 0%, transparent 40%),
-    linear-gradient(180deg, var(--wood) 0%, var(--wood-mid) 100%);
+  background: transparent;
   position: relative;
 }
 
@@ -410,7 +407,7 @@ html, body {
 .top-bar {
   background:
     linear-gradient(180deg, rgba(255,160,40,0.06) 0%, transparent 100%),
-    var(--bg2);
+    rgba(18,10,6,0.78);
   border-bottom: 1px solid rgba(201,150,42,0.25);
   padding: 8px 14px;
   display: flex;
@@ -520,17 +517,7 @@ html, body {
 
 /* DEALER ZONE — the green felt table top */
 .dealer-zone {
-  background:
-    radial-gradient(ellipse at 50% 0%, rgba(20,80,50,0.7) 0%, transparent 65%),
-    repeating-linear-gradient(
-      0deg, transparent, transparent 3px,
-      rgba(0,0,0,0.06) 3px, rgba(0,0,0,0.06) 6px
-    ),
-    repeating-linear-gradient(
-      90deg, transparent, transparent 3px,
-      rgba(0,0,0,0.04) 3px, rgba(0,0,0,0.04) 6px
-    ),
-    var(--felt);
+  background: rgba(5,18,12,0.18);
   border-bottom: 3px solid var(--rail);
   padding: 12px 16px 14px;
   flex-shrink: 0;
@@ -589,16 +576,7 @@ html, body {
   display: flex;
   flex-direction: column;
   gap: 9px;
-  background:
-    repeating-linear-gradient(
-      0deg, transparent, transparent 3px,
-      rgba(0,0,0,0.06) 3px, rgba(0,0,0,0.06) 6px
-    ),
-    repeating-linear-gradient(
-      90deg, transparent, transparent 3px,
-      rgba(0,0,0,0.04) 3px, rgba(0,0,0,0.04) 6px
-    ),
-    var(--felt-dark);
+  background: rgba(4,12,8,0.08);
 }
 
 /* BOTTOM BAR */
@@ -1105,9 +1083,9 @@ html, body {
   user-select: none;
 }
 
-.scene3d-wrap{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;}
+.scene3d-wrap{position:fixed;inset:0;z-index:1;pointer-events:none;overflow:hidden;}
 #scene3d{width:100%;height:100%;display:block;}
-.screen,.top-bar,.phase-strip,.dealer-zone,.scroll-area,.bottom-bar{position:relative;z-index:2;}
+.screen{position:fixed;inset:0;}.top-bar,.phase-strip,.dealer-zone,.scroll-area,.bottom-bar{position:relative;z-index:3;}
 
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r152/three.min.js"></script>
@@ -2423,8 +2401,8 @@ const VFX = {
     this.scene = new THREE.Scene();
     this.clock = new THREE.Clock();
     this.camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 100);
-    this.camera.position.set(0, 3.8, 8.4);
-    this.camera.lookAt(0, 1.2, -1.4);
+    this.camera.position.set(0, 2.9, 7.2);
+    this.camera.lookAt(0, 1.0, -1.8);
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.setSize(window.innerWidth, window.innerHeight);
@@ -2451,7 +2429,7 @@ const VFX = {
     const head = new THREE.Mesh(new THREE.SphereGeometry(0.62, 24, 24), new THREE.MeshStandardMaterial({ color: 0xffb347, emissive: 0xff5c00, emissiveIntensity: 2.2, roughness: 0.3 }));
     head.position.set(0, 3.1, 0); dealer.add(head);
     const face = this.makeDealerFace('idle'); face.position.set(0, 3.08, 0.56); dealer.add(face);
-    dealer.position.set(0, 0, -3.1); this.dealer = dealer; this.dealerFace = face; this.scene.add(dealer);
+    dealer.position.set(0, 0, -2.4); this.dealer = dealer; this.dealerFace = face; this.scene.add(dealer);
     for (let i = 0; i < 5; i++) {
       const flame = new THREE.Mesh(new THREE.SphereGeometry(0.18 + Math.random() * 0.12, 12, 12), new THREE.MeshStandardMaterial({ color: 0xff8a1a, emissive: 0xff5a00, emissiveIntensity: 2.4, transparent: true, opacity: 0.7 }));
       flame.userData = { baseX: (Math.random() - 0.5) * 1.0, baseY: 3.4 + Math.random() * 0.8, baseZ: (Math.random() - 0.5) * 0.5, speed: 0.8 + Math.random() * 1.2, phase: Math.random() * Math.PI * 2 };
