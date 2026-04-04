@@ -1105,32 +1105,11 @@ html, body {
   user-select: none;
 }
 
-
-/* 3D scene overlay */
-.scene3d-wrap{
-  position:fixed;
-  inset:0;
-  z-index:0;
-  pointer-events:none;
-  overflow:hidden;
-}
-#scene3d{
-  width:100%;
-  height:100%;
-  display:block;
-}
-.screen,
-.top-bar,
-.phase-strip,
-.dealer-zone,
-.scroll-area,
-.bottom-bar{
-  position:relative;
-  z-index:2;
-}
+.scene3d-wrap{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;}
+#scene3d{width:100%;height:100%;display:block;}
+.screen,.top-bar,.phase-strip,.dealer-zone,.scroll-area,.bottom-bar{position:relative;z-index:2;}
 
 </style>
-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r152/three.min.js"></script>
 </head>
 <body>
@@ -1185,9 +1164,7 @@ html, body {
 
 <!-- ═══ GAME ═══ -->
 <div id="game" class="screen">
-  <div id="scene3dWrap" class="scene3d-wrap">
-    <canvas id="scene3d"></canvas>
-  </div>
+  <div id="scene3dWrap" class="scene3d-wrap"><canvas id="scene3d"></canvas></div>
   <div class="top-bar">
     <div class="top-left">
       <div class="top-deck" id="topDeck">52</div>
@@ -1618,20 +1595,22 @@ function startPass() {
   G.passResult = null;
   clearBottomBar();
 
-  // Deal 2 cards to each active slot
+  if (window.VFX && VFX.isReady) {
+    VFX.clearCards();
+    VFX.setDealerMood('idle');
+  }
+
   const activeSlots = G.slots.filter(s => !s.eliminated);
   if (activeSlots.length === 0) {
-    // All eliminated — dealer wins
     endRound(false);
     return;
   }
 
-  // Assign hands to active slots
-  activeSlots.forEach((slot, i) => {
+  activeSlots.forEach((slot) => {
     const c1 = draw(), c2 = draw();
-    if (!c1 || !c2) return; // deck ran out mid-deal — handled below
+    if (!c1 || !c2) return;
     const pi = slot.playerIndex;
-    if (G.roundBurnt) G.roundBurnt[pi] = (G.roundBurnt[pi]||0) + 2; // 2 dealt cards
+    if (G.roundBurnt) G.roundBurnt[pi] = (G.roundBurnt[pi]||0) + 2;
     G.hands.push({
       slotIndex: G.slots.indexOf(slot),
       playerIndex: pi,
@@ -1645,37 +1624,46 @@ function startPass() {
     });
   });
 
-  // Dealer: 1 up, 1 down
   const dc1 = draw(), dc2 = draw();
   if (dc1) { G.dealerHand.push(dc1); G.dealerRoundBurnt = (G.dealerRoundBurnt||0)+1; }
   if (dc2) { dc2.down = true; G.dealerHand.push(dc2); G.dealerRoundBurnt = (G.dealerRoundBurnt||0)+1; }
 
-  // Check deck ran out during deal
   if (!dc1 || !dc2 || G.hands.some(h => h.cards.length < 2)) {
     triggerShowdown();
     return;
   }
 
-  // Process opening burns
   for (const hand of G.hands) {
     if (isBlackjack(hand.cards)) {
       hand.status = 'blackjack';
-      for (let i = 0; i < 3; i++) { const bc = burn(); if (bc) { hand.cards.push(bc); if (G.roundBurnt) G.roundBurnt[hand.playerIndex] = (G.roundBurnt[hand.playerIndex]||0)+1; } }
+      for (let i=0;i<3;i++) {
+        const bc = burn();
+        if (bc) {
+          hand.cards.push(bc);
+          if (G.roundBurnt) G.roundBurnt[hand.playerIndex] = (G.roundBurnt[hand.playerIndex]||0)+1;
+        }
+      }
+      vfxBurnLooseCardBurst(3);
+      setTimeout(() => toast(`🔥 ${G.players[hand.playerIndex].name}: BLACKJACK! Burn 3.`), 350);
     } else if (isSixSeven(hand.cards)) {
-      const bc = burn(); if (bc) { hand.cards.push(bc); if (G.roundBurnt) G.roundBurnt[hand.playerIndex] = (G.roundBurnt[hand.playerIndex]||0)+1; }
+      const bc = burn();
+      if (bc) {
+        hand.cards.push(bc);
+        if (G.roundBurnt) G.roundBurnt[hand.playerIndex] = (G.roundBurnt[hand.playerIndex]||0)+1;
+      }
+      vfxBurnLooseCardBurst(1);
+      setTimeout(() => toast(`🔥 ${G.players[hand.playerIndex].name}: 6 + 7! Burn 1.`), 350);
     }
     if (isKingNine(hand.cards)) {
-      setTimeout(() => toast(`🐕 ${G.players[hand.playerIndex].name}: BARK BARK BARK!`), 300);
+      setTimeout(() => toast(`🐕 ${G.players[hand.playerIndex].name}: BARK BARK BARK!`), 700);
     }
   }
 
   updateTopBar();
   setPhaseStrip('Player Turns');
 
-  // Find first active hand
   G.activeHand = G.hands.findIndex(h => h.status === 'active');
   if (G.activeHand === -1) {
-    // All blackjacks / no active hands
     G.activeHand = -1;
     setPhaseStrip('All Hands Done — Dealer Turn');
     renderGame();
@@ -1685,11 +1673,15 @@ function startPass() {
 
   renderGame();
   updateDeckDisplay();
+
+  setTimeout(() => {
+    if (!window.VFX || !VFX.isReady) return;
+    VFX.setDealerMood('idle');
+    vfxSyncFreshHands();
+    VFX.animateFlipByKey(vfxDealerCardKey(1), false);
+  }, 60);
 }
 
-/* ═══════════════════════════════════════════════
-   PLAYER ACTIONS
-═══════════════════════════════════════════════ */
 function hit(hi) {
   const hand = G.hands[hi];
   if (hand.status !== 'active') return;
@@ -1697,8 +1689,17 @@ function hit(hi) {
   if (!c) { triggerShowdown(); return; }
   c._isNew = true;
   hand.cards.push(c);
-  // Count card towards player
   if (G.roundBurnt && hand.playerIndex !== undefined) G.roundBurnt[hand.playerIndex] = (G.roundBurnt[hand.playerIndex] || 0) + 1;
+
+  if (window.VFX && VFX.isReady) {
+    const ci = hand.cards.length - 1;
+    const key = vfxPlayerCardKey(hi, ci);
+    const base = VFX.handPosition(hi, false);
+    const target = base.clone();
+    target.x += ci * 0.32;
+    VFX.animateDealTo(target, key, c, true);
+  }
+
   const val = handTotal(hand.cards);
   if (val > 21) { hand.status = 'bust'; }
   else if (val === 21) { hand.status = 'stand'; }
@@ -1718,13 +1719,29 @@ function doDouble(hi) {
   if (!canDouble(hand)) return;
   hand.doubled = true;
   hand.doubleUsed = true;
-  // Mark the slot so future passes on this same slot can't double
-  // (split hands are separate — they get their own fresh right)
   if (!hand.isSplitHand) {
     G.slots[hand.slotIndex].doubledGame = true;
   }
-  const c = draw(); if (c) { hand.cards.push(c); if (G.roundBurnt) G.roundBurnt[hand.playerIndex] = (G.roundBurnt[hand.playerIndex]||0)+1; }
-  const bc = burn(); if (bc) { hand.cards.push(bc); if (G.roundBurnt) G.roundBurnt[hand.playerIndex] = (G.roundBurnt[hand.playerIndex]||0)+1; }
+  const c = draw();
+  if (c) {
+    c._isNew = true;
+    hand.cards.push(c);
+    if (G.roundBurnt) G.roundBurnt[hand.playerIndex] = (G.roundBurnt[hand.playerIndex]||0)+1;
+    if (window.VFX && VFX.isReady) {
+      const ci = hand.cards.length - 1;
+      const key = vfxPlayerCardKey(hi, ci);
+      const base = VFX.handPosition(hi, false);
+      const target = base.clone();
+      target.x += ci * 0.32;
+      VFX.animateDealTo(target, key, c, true);
+    }
+  }
+  const bc = burn();
+  if (bc) {
+    hand.cards.push(bc);
+    if (G.roundBurnt) G.roundBurnt[hand.playerIndex] = (G.roundBurnt[hand.playerIndex]||0)+1;
+    vfxBurnLooseCardBurst(1);
+  }
   const val = handTotal(hand.cards.filter(x => !x.burned));
   hand.status = val > 21 ? 'bust' : 'stand';
   updateDeckDisplay();
@@ -1737,7 +1754,6 @@ function doSplit(hi) {
   if (!canSplit(hand)) return;
   const c1 = hand.cards[0], c2 = hand.cards[1];
   const n1 = draw(), n2 = draw();
-  // Count the 2 new split cards towards this player
   if (G.roundBurnt) {
     if (n1) G.roundBurnt[hand.playerIndex] = (G.roundBurnt[hand.playerIndex]||0)+1;
     if (n2) G.roundBurnt[hand.playerIndex] = (G.roundBurnt[hand.playerIndex]||0)+1;
@@ -1748,7 +1764,7 @@ function doSplit(hi) {
   hand.splitFrom = hi;
   hand.isSplitHand = true;
   hand.doubled = false;
-  hand.doubleUsed = false; // split hand gets its own fresh double right
+  hand.doubleUsed = false;
   hand.status = 'active';
 
   const newHand = {
@@ -1757,7 +1773,7 @@ function doSplit(hi) {
     cards: [c2],
     status: 'active',
     doubled: false,
-    doubleUsed: false, // fresh double right for this split hand
+    doubleUsed: false,
     isSplitHand: true,
     splitFrom: hi,
     result: null,
@@ -1766,17 +1782,41 @@ function doSplit(hi) {
 
   G.hands.splice(hi + 1, 0, newHand);
 
-  // Check new hands for blackjack / burns
   for (const h of [hand, newHand]) {
     if (isBlackjack(h.cards)) {
       h.status = 'blackjack';
-      for (let i=0;i<3;i++) { const bc=burn(); if(bc) h.cards.push(bc); }
+      for (let i=0;i<3;i++) {
+        const bc=burn();
+        if (bc) {
+          h.cards.push(bc);
+          if (G.roundBurnt) G.roundBurnt[h.playerIndex] = (G.roundBurnt[h.playerIndex]||0)+1;
+        }
+      }
+      vfxBurnLooseCardBurst(3);
+    } else if (isSixSeven(h.cards)) {
+      const bc = burn();
+      if (bc) {
+        h.cards.push(bc);
+        if (G.roundBurnt) G.roundBurnt[h.playerIndex] = (G.roundBurnt[h.playerIndex]||0)+1;
+      }
+      vfxBurnLooseCardBurst(1);
+    }
+    if (isKingNine(h.cards)) {
+      setTimeout(() => toast(`🐕 ${G.players[h.playerIndex].name}: BARK BARK BARK!`), 500);
     }
   }
 
   updateDeckDisplay();
-  G.activeHand = hi; // re-check from here
+  G.activeHand = hi;
   renderGame();
+
+  setTimeout(() => {
+    if (!window.VFX || !VFX.isReady) return;
+    VFX.clearCards();
+    vfxSyncFreshHands();
+    VFX.syncDealerHand();
+  }, 40);
+
   if (hand.status !== 'active') advanceHand(hi);
 }
 
@@ -1806,10 +1846,10 @@ function advanceHand(fromHi) {
    DEALER TURN
 ═══════════════════════════════════════════════ */
 function dealerTurn() {
-  // Flip hole card with animation flag
   if (G.dealerHand[1]) {
     G.dealerHand[1].down = false;
     G.dealerHand[1]._flip = true;
+    if (window.VFX && VFX.isReady) vfxDealerRevealHiddenCard();
   }
   G.phase = 'dealer-turn';
   setPhaseStrip('Dealer Turn');
@@ -1825,6 +1865,7 @@ function dealerDraw() {
     c._isNew = true;
     G.dealerHand.push(c);
     G.dealerRoundBurnt = (G.dealerRoundBurnt||0)+1;
+    if (window.VFX && VFX.isReady) vfxDealerDrawLatest();
     updateDeckDisplay();
     renderGame();
     const newVal = handTotal(G.dealerHand);
@@ -1842,11 +1883,14 @@ function dealerDraw() {
    SHOWDOWN (deck exhausted mid-hand)
 ═══════════════════════════════════════════════ */
 function triggerShowdown() {
-  G.dealerHand.forEach(c => { c.down = false; if (!c._flip) c._flip = true; });
+  G.dealerHand.forEach((c, i) => {
+    c.down = false;
+    if (!c._flip) c._flip = true;
+    if (window.VFX && VFX.isReady) VFX.animateFlipByKey(vfxDealerCardKey(i), true);
+  });
   G.phase = 'showdown';
   setPhaseStrip('🔥 END-OF-DECK SHOWDOWN');
   toast('🔥 Deck exhausted — SHOWDOWN!');
-  // Render first so players can see all cards, then show next button to resolve
   renderGame();
   showBottomNext('🔥 Reveal Results →', () => resolveHands(true));
 }
@@ -1965,7 +2009,6 @@ function resolveHands(isShowdown = false) {
 function endRound(playersWin, showdown = false) {
   const cardsLeft = G.deck.length;
 
-  // Track round win counts
   if (playersWin) G.playerWins = (G.playerWins || 0) + 1;
   else G.dealerWins = (G.dealerWins || 0) + 1;
 
@@ -1975,20 +2018,21 @@ function endRound(playersWin, showdown = false) {
     }
   } else {
     if (playersWin) {
-      // Each non-dealer player earns points equal to their own cards burnt this round
       G.players.forEach((p, pi) => {
         if (pi !== G.dealerPlayerIndex) p.score += (G.roundBurnt[pi] || 0);
       });
     } else {
-      // Dealer wins: dealer player gets cards remaining
       G.players[G.dealerPlayerIndex].score += cardsLeft;
     }
   }
 
-  // Accumulate session burn totals
   G.players.forEach((p, pi) => {
     p.cardsTotal = (p.cardsTotal || 0) + (G.roundBurnt[pi] || 0);
   });
+
+  if (window.VFX && VFX.isReady) {
+    VFX.setDealerMood(playersWin ? 'lose' : 'win');
+  }
 
   showResultScreen(playersWin, cardsLeft, showdown);
 }
@@ -2367,28 +2411,12 @@ function closeScores() {
   document.getElementById('scoresOverlay').classList.remove('open');
 }
 
-/* ═══════════════════════════════════════════════
-   BOOT
-═══════════════════════════════════════════════ */
-initSetup();
-</script>
 
-<script>
-(function(){
 const VFX = {
-  scene: null,
-  camera: null,
-  renderer: null,
-  clock: null,
-  dealer: null,
-  dealerFace: null,
-  dealerFlames: [],
-  playerHands: [],
-  cardMeshes: new Map(),
-  burnPileAnchor: null,
-  deckAnchor: null,
-  isReady: false,
-  lastDealerMood: 'idle',
+  scene: null, camera: null, renderer: null, clock: null,
+  dealer: null, dealerFace: null, dealerFlames: [], playerHands: [],
+  cardMeshes: new Map(), burnPileAnchor: null, deckAnchor: null,
+  isReady: false, lastDealerMood: 'idle',
   init() {
     const canvas = document.getElementById('scene3d');
     if (!canvas || this.isReady || typeof THREE === 'undefined') return;
@@ -2404,14 +2432,9 @@ const VFX = {
     window.addEventListener('resize', () => this.onResize());
     this.isReady = true; this.tick();
   },
-  onResize() {
-    if (!this.renderer || !this.camera) return;
-    this.camera.aspect = window.innerWidth / window.innerHeight;
-    this.camera.updateProjectionMatrix();
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
-  },
+  onResize() { if (!this.renderer || !this.camera) return; this.camera.aspect = window.innerWidth / window.innerHeight; this.camera.updateProjectionMatrix(); this.renderer.setSize(window.innerWidth, window.innerHeight); },
   buildLights() {
-    const ambient = new THREE.AmbientLight(0xffd2a0, 0.9); this.scene.add(ambient);
+    this.scene.add(new THREE.AmbientLight(0xffd2a0, 0.9));
     const fireKey = new THREE.PointLight(0xff6a00, 2.0, 30); fireKey.position.set(0, 5, -1); this.scene.add(fireKey);
     const warmFill = new THREE.PointLight(0xffaa66, 0.8, 20); warmFill.position.set(0, 2, 6); this.scene.add(warmFill);
   },
@@ -2445,12 +2468,10 @@ const VFX = {
     else if (mood === 'lose') ctx.arc(128, 196, 42, Math.PI + 0.15, Math.PI * 2 - 0.15, false);
     else { ctx.moveTo(96, 156); ctx.lineTo(160, 156); }
     ctx.stroke();
-    const tex = new THREE.CanvasTexture(canvas);
-    return new THREE.Mesh(new THREE.PlaneGeometry(1.05, 1.05), new THREE.MeshBasicMaterial({ map: tex, transparent: true }));
+    return new THREE.Mesh(new THREE.PlaneGeometry(1.05, 1.05), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(canvas), transparent: true }));
   },
   setDealerMood(mood='idle') {
-    if (!this.dealer) return; this.lastDealerMood = mood;
-    if (this.dealerFace) this.dealer.remove(this.dealerFace);
+    if (!this.dealer) return; this.lastDealerMood = mood; if (this.dealerFace) this.dealer.remove(this.dealerFace);
     this.dealerFace = this.makeDealerFace(mood); this.dealerFace.position.set(0, 3.08, 0.56); this.dealer.add(this.dealerFace);
     const body = this.dealer.children[0], head = this.dealer.children[1];
     if (mood === 'win') { body.material.emissiveIntensity = 2.1; head.material.emissiveIntensity = 2.6; body.material.color.set(0xffa033); head.material.color.set(0xffc266); }
@@ -2472,57 +2493,35 @@ const VFX = {
   },
   makeCardFaceTexture(cardData) {
     const canvas = document.createElement('canvas'); canvas.width = 256; canvas.height = 384; const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.strokeStyle = '#d0d0d0'; ctx.lineWidth = 8; ctx.strokeRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#fff'; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.strokeStyle = '#d0d0d0'; ctx.lineWidth = 8; ctx.strokeRect(0,0,canvas.width,canvas.height);
     const red = cardData && (cardData.s === '♥' || cardData.s === '♦'); ctx.fillStyle = red ? '#c62828' : '#111111'; ctx.font = 'bold 54px Arial';
-    ctx.fillText((cardData && cardData.v) || '?', 22, 62); ctx.fillText((cardData && cardData.s) || '', 22, 118);
-    ctx.save(); ctx.translate(canvas.width, canvas.height); ctx.rotate(Math.PI); ctx.fillText((cardData && cardData.v) || '?', 22, 62); ctx.fillText((cardData && cardData.s) || '', 22, 118); ctx.restore();
+    ctx.fillText(cardData?.v || '?', 22, 62); ctx.fillText(cardData?.s || '', 22, 118); ctx.save(); ctx.translate(canvas.width, canvas.height); ctx.rotate(Math.PI); ctx.fillText(cardData?.v || '?', 22, 62); ctx.fillText(cardData?.s || '', 22, 118); ctx.restore();
     return new THREE.CanvasTexture(canvas);
   },
   makeCardMesh(cardData) {
     const group = new THREE.Group();
     const base = new THREE.Mesh(new THREE.BoxGeometry(0.92, 0.04, 1.32), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.85 }));
-    const front = new THREE.Mesh(new THREE.PlaneGeometry(0.84, 1.22), new THREE.MeshBasicMaterial({ map: this.makeCardFaceTexture(cardData) }));
-    front.position.set(0, 0.021, 0); front.rotation.x = -Math.PI / 2;
-    const back = new THREE.Mesh(new THREE.PlaneGeometry(0.84, 1.22), new THREE.MeshBasicMaterial({ color: 0x8b0f17 }));
-    back.position.set(0, -0.021, 0); back.rotation.x = Math.PI / 2;
+    const front = new THREE.Mesh(new THREE.PlaneGeometry(0.84, 1.22), new THREE.MeshBasicMaterial({ map: this.makeCardFaceTexture(cardData) })); front.position.set(0,0.021,0); front.rotation.x = -Math.PI/2;
+    const back = new THREE.Mesh(new THREE.PlaneGeometry(0.84, 1.22), new THREE.MeshBasicMaterial({ color: 0x8b0f17 })); back.position.set(0,-0.021,0); back.rotation.x = Math.PI/2;
     group.add(base, front, back); group.userData.cardData = cardData; return group;
   },
   handPosition(index, dealer=false) { return dealer ? new THREE.Vector3(-1 + index * 1.1, 0.32, -2.15) : new THREE.Vector3(-3.2 + index * 1.25, 0.32, 1.55); },
   animateDealTo(targetVec, key, cardData, reveal=true) {
     const mesh = this.makeCardMesh(cardData); mesh.position.copy(this.deckAnchor.position); mesh.position.y = 0.8; mesh.rotation.x = -1.1; mesh.rotation.z = 0.2; this.scene.add(mesh); this.cardMeshes.set(key, mesh);
-    const start = mesh.position.clone(), duration = 420, t0 = performance.now();
-    const loop = (now) => {
-      const p = Math.min((now - t0) / duration, 1), e = 1 - Math.pow(1 - p, 3);
-      mesh.position.lerpVectors(start, targetVec, e); mesh.position.y += Math.sin(p * Math.PI) * 0.7; mesh.rotation.z = (1 - e) * 0.25; mesh.rotation.x = -0.15 * (1 - e);
-      if (p < 1) requestAnimationFrame(loop); else { mesh.position.copy(targetVec); mesh.rotation.set(0, reveal ? 0 : Math.PI, 0); }
-    };
-    requestAnimationFrame(loop); return mesh;
+    const start = mesh.position.clone(); const duration = 420; const t0 = performance.now();
+    const loop = (now) => { let p = Math.min((now - t0) / duration, 1), e = 1 - Math.pow(1 - p, 3); mesh.position.lerpVectors(start, targetVec, e); mesh.position.y += Math.sin(p * Math.PI) * 0.7; mesh.rotation.z = (1 - e) * 0.25; mesh.rotation.x = -0.15 * (1 - e); if (p < 1) requestAnimationFrame(loop); else { mesh.position.copy(targetVec); mesh.rotation.set(0, reveal ? 0 : Math.PI, 0); } }; requestAnimationFrame(loop); return mesh;
   },
   animateFlipByKey(key, faceUp=true) {
     const mesh = this.cardMeshes.get(key); if (!mesh) return; const startY = mesh.rotation.y, endY = faceUp ? 0 : Math.PI, t0 = performance.now(), duration = 260;
-    const loop = (now) => { const p = Math.min((now - t0) / duration, 1); mesh.rotation.y = startY + (endY - startY) * p; if (p < 1) requestAnimationFrame(loop); };
-    requestAnimationFrame(loop);
+    const loop = (now) => { const p = Math.min((now - t0) / duration, 1); mesh.rotation.y = startY + (endY - startY) * p; if (p < 1) requestAnimationFrame(loop); }; requestAnimationFrame(loop);
   },
   spawnBurnEffect(pos) {
-    for (let i = 0; i < 6; i++) {
-      const ember = new THREE.Mesh(new THREE.SphereGeometry(0.06 + Math.random() * 0.05, 8, 8), new THREE.MeshStandardMaterial({ color: 0xff9a1f, emissive: 0xff5a00, emissiveIntensity: 2.5, transparent: true, opacity: 0.85 }));
-      ember.position.copy(pos); ember.position.x += (Math.random() - 0.5) * 0.35; ember.position.z += (Math.random() - 0.5) * 0.35; this.scene.add(ember);
+    for (let i = 0; i < 6; i++) { const ember = new THREE.Mesh(new THREE.SphereGeometry(0.06 + Math.random() * 0.05, 8, 8), new THREE.MeshStandardMaterial({ color: 0xff9a1f, emissive: 0xff5a00, emissiveIntensity: 2.5, transparent: true, opacity: 0.85 })); ember.position.copy(pos); ember.position.x += (Math.random() - 0.5) * 0.35; ember.position.z += (Math.random() - 0.5) * 0.35; this.scene.add(ember);
       const vx = (Math.random() - 0.5) * 0.02, vy = 0.02 + Math.random() * 0.025, vz = (Math.random() - 0.5) * 0.02, t0 = performance.now();
-      const loop = (now) => { const p = Math.min((now - t0) / 450, 1); ember.position.x += vx; ember.position.y += vy; ember.position.z += vz; ember.material.opacity = 0.85 * (1 - p); ember.scale.setScalar(1 + p * 1.7); if (p < 1) requestAnimationFrame(loop); else this.scene.remove(ember); };
-      requestAnimationFrame(loop);
-    }
+      const loop = (now) => { const p = Math.min((now - t0) / 450, 1); ember.position.x += vx; ember.position.y += vy; ember.position.z += vz; ember.material.opacity = 0.85 * (1 - p); ember.scale.setScalar(1 + p * 1.7); if (p < 1) requestAnimationFrame(loop); else this.scene.remove(ember); }; requestAnimationFrame(loop); }
   },
-  syncDealerHand() {
-    if (!window.G) return;
-    G.dealerHand.forEach((card, i) => { const key = `dealer-${G.round}-${G.pass}-${i}`; if (!this.cardMeshes.has(key)) this.animateDealTo(this.handPosition(i, true), key, card, !card.down); });
-  },
-  syncPlayerHands() {
-    if (!window.G) return; let visualIndex = 0;
-    G.hands.forEach((hand, hi) => {
-      hand.cards.forEach((card, ci) => { if (card.burned) return; const key = `hand-${G.round}-${G.pass}-${hi}-${ci}`; if (!this.cardMeshes.has(key)) { const base = this.handPosition(visualIndex, false); const target = base.clone(); target.x += ci * 0.32; this.animateDealTo(target, key, card, true); } });
-      visualIndex += 1;
-    });
-  },
+  syncDealerHand() { if (!window.G) return; G.dealerHand.forEach((card, i) => { const key = `dealer-${G.round}-${G.pass}-${i}`; if (!this.cardMeshes.has(key)) this.animateDealTo(this.handPosition(i, true), key, card, !card.down); }); },
+  syncPlayerHands() { if (!window.G) return; let visualIndex = 0; G.hands.forEach((hand, hi) => { hand.cards.forEach((card, ci) => { if (card.burned) return; const key = `hand-${G.round}-${G.pass}-${hi}-${ci}`; if (!this.cardMeshes.has(key)) { const base = this.handPosition(visualIndex, false), target = base.clone(); target.x += ci * 0.32; this.animateDealTo(target, key, card, true); } }); visualIndex += 1; }); },
   clearCards() { for (const mesh of this.cardMeshes.values()) this.scene.remove(mesh); this.cardMeshes.clear(); },
   tick() {
     requestAnimationFrame(() => this.tick()); if (!this.isReady) return; const t = this.clock.getElapsedTime();
@@ -2532,84 +2531,18 @@ const VFX = {
     this.renderer.render(this.scene, this.camera);
   }
 };
-window.VFX = VFX;
 function vfxPlayerCardKey(hi, ci) { return `hand-${G.round}-${G.pass}-${hi}-${ci}`; }
 function vfxDealerCardKey(ci) { return `dealer-${G.round}-${G.pass}-${ci}`; }
-function vfxSyncFreshHands() { if (window.VFX && VFX.isReady) { VFX.syncPlayerHands(); VFX.syncDealerHand(); } }
+function vfxSyncFreshHands() { if (!window.VFX || !VFX.isReady) return; VFX.syncPlayerHands(); VFX.syncDealerHand(); }
 function vfxBurnLooseCardBurst(count = 1) { if (!window.VFX || !VFX.isReady) return; for (let i = 0; i < count; i++) setTimeout(() => VFX.spawnBurnEffect(VFX.burnPileAnchor.position.clone()), i * 120); }
-function vfxDealerRevealHiddenCard() { if (window.VFX && VFX.isReady) VFX.animateFlipByKey(vfxDealerCardKey(1), true); }
-function vfxDealerDrawLatest() { if (!window.VFX || !VFX.isReady) return; const ci = G.dealerHand.length - 1; const key = vfxDealerCardKey(ci); const target = VFX.handPosition(ci, true); VFX.animateDealTo(target, key, G.dealerHand[ci], true); }
-window.addEventListener('load', () => VFX.init());
-startPass = function() {
-  G.pass++; G.dealerHand = []; G.hands = []; G.phase = 'player-turns'; G.activeHand = -1; G.passResult = null; clearBottomBar();
-  if (window.VFX && VFX.isReady) { VFX.clearCards(); VFX.setDealerMood('idle'); }
-  const activeSlots = G.slots.filter(s => !s.eliminated); if (activeSlots.length === 0) { endRound(false); return; }
-  activeSlots.forEach((slot) => {
-    const c1 = draw(), c2 = draw(); if (!c1 || !c2) return; const pi = slot.playerIndex; if (G.roundBurnt) G.roundBurnt[pi] = (G.roundBurnt[pi] || 0) + 2;
-    G.hands.push({ slotIndex: G.slots.indexOf(slot), playerIndex: pi, cards: [c1, c2], status: 'active', doubled: false, doubleUsed: slot.doubledGame, isSplitHand: false, splitFrom: null, result: null });
-  });
-  const dc1 = draw(), dc2 = draw();
-  if (dc1) { G.dealerHand.push(dc1); G.dealerRoundBurnt = (G.dealerRoundBurnt || 0) + 1; }
-  if (dc2) { dc2.down = true; G.dealerHand.push(dc2); G.dealerRoundBurnt = (G.dealerRoundBurnt || 0) + 1; }
-  if (!dc1 || !dc2 || G.hands.some(h => h.cards.length < 2)) { triggerShowdown(); return; }
-  for (const hand of G.hands) {
-    if (isBlackjack(hand.cards)) { hand.status = 'blackjack'; for (let i = 0; i < 3; i++) { const bc = burn(); if (bc) { hand.cards.push(bc); if (G.roundBurnt) G.roundBurnt[hand.playerIndex] = (G.roundBurnt[hand.playerIndex] || 0) + 1; } } vfxBurnLooseCardBurst(3); }
-    else if (isSixSeven(hand.cards)) { const bc = burn(); if (bc) { hand.cards.push(bc); if (G.roundBurnt) G.roundBurnt[hand.playerIndex] = (G.roundBurnt[hand.playerIndex] || 0) + 1; } vfxBurnLooseCardBurst(1); }
-    if (isKingNine(hand.cards)) setTimeout(() => toast(`🐕 ${G.players[hand.playerIndex].name}: BARK BARK BARK!`), 300);
-  }
-  updateTopBar(); setPhaseStrip('Player Turns');
-  G.activeHand = G.hands.findIndex(h => h.status === 'active');
-  if (G.activeHand === -1) { G.activeHand = -1; setPhaseStrip('All Hands Done — Dealer Turn'); renderGame(); showBottomNext('Dealer Turn →', dealerTurn); return; }
-  renderGame(); updateDeckDisplay();
-  setTimeout(() => { if (!window.VFX || !VFX.isReady) return; VFX.setDealerMood('idle'); vfxSyncFreshHands(); VFX.animateFlipByKey(vfxDealerCardKey(1), false); }, 60);
-};
-hit = function(hi) {
-  const hand = G.hands[hi]; if (hand.status !== 'active') return; const c = draw(); if (!c) { triggerShowdown(); return; }
-  c._isNew = true; hand.cards.push(c); if (G.roundBurnt && hand.playerIndex !== undefined) G.roundBurnt[hand.playerIndex] = (G.roundBurnt[hand.playerIndex] || 0) + 1;
-  if (window.VFX && VFX.isReady) { const ci = hand.cards.length - 1; const key = vfxPlayerCardKey(hi, ci); const base = VFX.handPosition(hi, false); const target = base.clone(); target.x += ci * 0.32; VFX.animateDealTo(target, key, c, true); }
-  const val = handTotal(hand.cards); if (val > 21) hand.status = 'bust'; else if (val === 21) hand.status = 'stand'; updateDeckDisplay(); renderGame(); if (hand.status !== 'active') advanceHand(hi);
-};
-doDouble = function(hi) {
-  const hand = G.hands[hi]; if (!canDouble(hand)) return; hand.doubled = true; hand.doubleUsed = true; if (!hand.isSplitHand) G.slots[hand.slotIndex].doubledGame = true;
-  const c = draw(); if (c) { c._isNew = true; hand.cards.push(c); if (G.roundBurnt) G.roundBurnt[hand.playerIndex] = (G.roundBurnt[hand.playerIndex] || 0) + 1; if (window.VFX && VFX.isReady) { const ci = hand.cards.length - 1; const key = vfxPlayerCardKey(hi, ci); const base = VFX.handPosition(hi, false); const target = base.clone(); target.x += ci * 0.32; VFX.animateDealTo(target, key, c, true); } }
-  const bc = burn(); if (bc) { hand.cards.push(bc); if (G.roundBurnt) G.roundBurnt[hand.playerIndex] = (G.roundBurnt[hand.playerIndex] || 0) + 1; vfxBurnLooseCardBurst(1); }
-  const val = handTotal(hand.cards.filter(x => !x.burned)); hand.status = val > 21 ? 'bust' : 'stand'; updateDeckDisplay(); renderGame(); advanceHand(hi);
-};
-doSplit = function(hi) {
-  const hand = G.hands[hi]; if (!canSplit(hand)) return; const c1 = hand.cards[0], c2 = hand.cards[1]; const n1 = draw(), n2 = draw();
-  if (G.roundBurnt) { if (n1) G.roundBurnt[hand.playerIndex] = (G.roundBurnt[hand.playerIndex] || 0) + 1; if (n2) G.roundBurnt[hand.playerIndex] = (G.roundBurnt[hand.playerIndex] || 0) + 1; }
-  hand.cards = [c1]; if (n1) hand.cards.push(n1); hand.splitFrom = hi; hand.isSplitHand = true; hand.doubled = false; hand.doubleUsed = false; hand.status = 'active';
-  const newHand = { slotIndex: hand.slotIndex, playerIndex: hand.playerIndex, cards: [c2], status: 'active', doubled: false, doubleUsed: false, isSplitHand: true, splitFrom: hi, result: null };
-  if (n2) newHand.cards.push(n2); G.hands.splice(hi + 1, 0, newHand);
-  for (const h of [hand, newHand]) {
-    if (isBlackjack(h.cards)) { h.status = 'blackjack'; for (let i = 0; i < 3; i++) { const bc = burn(); if (bc) { h.cards.push(bc); if (G.roundBurnt) G.roundBurnt[h.playerIndex] = (G.roundBurnt[h.playerIndex] || 0) + 1; } } vfxBurnLooseCardBurst(3); }
-  }
-  updateDeckDisplay(); G.activeHand = hi; renderGame();
-  setTimeout(() => { if (!window.VFX || !VFX.isReady) return; VFX.clearCards(); vfxSyncFreshHands(); VFX.syncDealerHand(); }, 40);
-  if (hand.status !== 'active') advanceHand(hi);
-};
-dealerTurn = function() {
-  if (G.dealerHand[1]) { G.dealerHand[1].down = false; G.dealerHand[1]._flip = true; vfxDealerRevealHiddenCard(); }
-  G.phase = 'dealer-turn'; setPhaseStrip('Dealer Turn'); renderGame(); showBottomNext('Dealer Plays →', dealerDraw);
-};
-dealerDraw = function() {
-  const val = handTotal(G.dealerHand); if (val < 17) { const c = draw(); if (!c) { triggerShowdown(); return; } c._isNew = true; G.dealerHand.push(c); G.dealerRoundBurnt = (G.dealerRoundBurnt || 0) + 1; vfxDealerDrawLatest(); updateDeckDisplay(); renderGame(); const newVal = handTotal(G.dealerHand); if (newVal < 17) showBottomNext('Dealer Draws →', dealerDraw); else showBottomNext('Resolve →', resolveHands); } else resolveHands();
-};
-triggerShowdown = function() {
-  G.dealerHand.forEach((c, i) => { c.down = false; if (!c._flip) c._flip = true; if (window.VFX && VFX.isReady) VFX.animateFlipByKey(vfxDealerCardKey(i), true); });
-  G.phase = 'showdown'; setPhaseStrip('🔥 END-OF-DECK SHOWDOWN'); toast('🔥 Deck exhausted — SHOWDOWN!'); renderGame(); showBottomNext('🔥 Reveal Results →', () => resolveHands(true));
-};
-endRound = function(playersWin, showdown = false) {
-  const cardsLeft = G.deck.length; if (playersWin) G.playerWins = (G.playerWins || 0) + 1; else G.dealerWins = (G.dealerWins || 0) + 1;
-  if (G.players.length === 1) { if (playersWin) G.players[0].score += (G.roundBurnt[0] || 0); }
-  else if (playersWin) G.players.forEach((p, pi) => { if (pi !== G.dealerPlayerIndex) p.score += (G.roundBurnt[pi] || 0); });
-  else G.players[G.dealerPlayerIndex].score += cardsLeft;
-  G.players.forEach((p, pi) => { p.cardsTotal = (p.cardsTotal || 0) + (G.roundBurnt[pi] || 0); });
-  if (window.VFX && VFX.isReady) VFX.setDealerMood(playersWin ? 'lose' : 'win');
-  showResultScreen(playersWin, cardsLeft, showdown);
-};
-})();
-</script>
+function vfxDealerRevealHiddenCard() { if (!window.VFX || !VFX.isReady) return; VFX.animateFlipByKey(vfxDealerCardKey(1), true); }
+function vfxDealerDrawLatest() { if (!window.VFX || !VFX.isReady) return; const ci = G.dealerHand.length - 1, key = vfxDealerCardKey(ci), target = VFX.handPosition(ci, true); VFX.animateDealTo(target, key, G.dealerHand[ci], true); }
+window.addEventListener('load', () => { if (window.VFX) VFX.init(); });
 
+/* ═══════════════════════════════════════════════
+   BOOT
+═══════════════════════════════════════════════ */
+initSetup();
+</script>
 </body>
 </html>
